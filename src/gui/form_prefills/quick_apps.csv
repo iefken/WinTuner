@@ -1,0 +1,10 @@
+label,file,args
+Registry Editor,regedit,
+Windows PowerShell,powershell,
+PowerShell ISE,powershell_ise,
+Task Manager,taskmgr,
+Device Manager,devmgmt.msc,
+Services,services.msc,
+Disk Management,diskmgmt.msc,
+Computer Management,compmgmt.msc,
+Event Viewer,eventvwr.msc,

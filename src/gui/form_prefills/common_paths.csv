@@ -1,0 +1,11 @@
+path,description
+C:\Windows\Temp\,Windows temp (admin)
+C:\Users\xUSERIDx\AppData\Local\Temp\,Current user temp
+C:\Users\xUSERIDx\Downloads\,Downloads
+C:\Users\xUSERIDx\Desktop\,Desktop
+C:\Users\Public\Desktop\,Public (all-users) desktop
+C:\Users\xUSERIDx\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\,Current user startup items
+C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup\,All-users startup items
+C:\Users\xUSERIDx\AppData\Local\CrashDumps\,User crash dumps
+C:\Users\xUSERIDx\AppData\Local\Microsoft\Windows\INetCache\,IE/Edge internet cache
+C:\Windows\Prefetch\,Windows prefetch (admin)

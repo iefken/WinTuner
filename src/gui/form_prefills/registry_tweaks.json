@@ -1,0 +1,187 @@
+[
+  {
+    "name": "Enable NumLock at logon",
+    "description": "Turns NumLock on at the Windows logon screen.",
+    "path": "HKEY_USERS\\.DEFAULT\\Control Panel\\Keyboard",
+    "admin": true,
+    "entries": [
+      { "name": "InitialKeyboardIndicators", "type": "String", "value": "2" }
+    ]
+  },
+  {
+    "name": "Show Fast User Switching",
+    "description": "0 = show the Switch User option, 1 = hide it.",
+    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+    "admin": true,
+    "entries": [
+      { "name": "HideFastUserSwitching", "type": "DWord", "value": "0" }
+    ]
+  },
+  {
+    "name": "NLA passive poll period",
+    "description": "Network Location Awareness poll period (helps some 'no internet' false flags).",
+    "path": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\NlaSvc\\Parameters\\Internet",
+    "admin": true,
+    "entries": [
+      { "name": "PassivePollPeriod", "type": "DWord", "value": "1" }
+    ]
+  },
+  {
+    "name": "Enable NCSI active probing",
+    "description": "1 = enable active internet connectivity probing, 0 = disable.",
+    "path": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\NlaSvc\\Parameters\\Internet",
+    "admin": true,
+    "entries": [
+      { "name": "EnableActiveProbing", "type": "DWord", "value": "1" }
+    ]
+  },
+  {
+    "name": "Allow NCSI active probe (policy)",
+    "description": "0 = allow the active probe, 1 = block it via policy.",
+    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkConnectivityStatusIndicator",
+    "admin": true,
+    "entries": [
+      { "name": "NoActiveProbe", "type": "DWord", "value": "0" }
+    ]
+  },
+  {
+    "name": "Default terminal = Windows Console Host",
+    "description": "Forces the legacy console as the default terminal (Win11). Stops apps opening in Windows Terminal.",
+    "path": "HKEY_CURRENT_USER\\Console\\%%Startup",
+    "admin": false,
+    "entries": [
+      { "name": "DelegationConsole",  "type": "String", "value": "{00000000-0000-0000-0000-000000000000}" },
+      { "name": "DelegationTerminal", "type": "String", "value": "{00000000-0000-0000-0000-000000000000}" }
+    ]
+  },
+  {
+    "name": "Disable Delivery Optimization",
+    "description": "DoSvc service start type: 2 = automatic, 4 = disabled.",
+    "path": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\DoSvc",
+    "admin": true,
+    "entries": [
+      { "name": "Start", "type": "DWord", "value": "4" }
+    ]
+  },
+  {
+    "name": "Disable Edge IE-mode integration",
+    "description": "InternetExplorerIntegrationLevel: 0 = off, 1 = on (Edge policy).",
+    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "admin": true,
+    "entries": [
+      { "name": "InternetExplorerIntegrationLevel", "type": "DWord", "value": "0" }
+    ]
+  },
+  {
+    "name": "Disable Activity History",
+    "description": "Disables Windows activity history tracking (recent docs, clipboard, run history).",
+    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+    "admin": true,
+    "entries": [
+      { "name": "EnableActivityFeed", "type": "DWord", "value": "0" },
+      { "name": "PublishUserActivities", "type": "DWord", "value": "0" },
+      { "name": "UploadUserActivities", "type": "DWord", "value": "0" }
+    ]
+  },
+  {
+    "name": "Disable Location Tracking",
+    "description": "Disables Windows location tracking services and permissions.",
+    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\location",
+    "admin": true,
+    "entries": [
+      { "name": "Value", "type": "String", "value": "Deny" }
+    ]
+  },
+  {
+    "name": "Disable Maps AutoUpdate",
+    "description": "Disables automatic map updates.",
+    "path": "HKEY_LOCAL_MACHINE\\SYSTEM\\Maps",
+    "admin": true,
+    "entries": [
+      { "name": "AutoUpdateEnabled", "type": "DWord", "value": "0" }
+    ]
+  },
+  {
+    "name": "Disable Advertising ID",
+    "description": "Disables the advertising ID used for personalized ads.",
+    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AdvertisingInfo",
+    "admin": true,
+    "entries": [
+      { "name": "Enabled", "type": "DWord", "value": "0" }
+    ]
+  },
+  {
+    "name": "Disable Telemetry",
+    "description": "Disables Windows telemetry data collection.",
+    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection",
+    "admin": true,
+    "entries": [
+      { "name": "AllowTelemetry", "type": "DWord", "value": "0" }
+    ]
+  },
+  {
+    "name": "Disable Cortana",
+    "description": "Disables Cortana assistant.",
+    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search",
+    "admin": true,
+    "entries": [
+      { "name": "AllowCortana", "type": "DWord", "value": "0" },
+      { "name": "BingSearchEnabled", "type": "DWord", "value": "0" },
+      { "name": "CortanaConsent", "type": "DWord", "value": "0" }
+    ]
+  },
+  {
+    "name": "Disable Game DVR",
+    "description": "Disables Game DVR background recording.",
+    "path": "HKEY_CURRENT_USER\\System\\GameConfigStore",
+    "admin": false,
+    "entries": [
+      { "name": "GameDVR_Enabled", "type": "DWord", "value": "0" }
+    ]
+  },
+  {
+    "name": "Disable SmartScreen",
+    "description": "Disables Windows SmartScreen filter (use with caution).",
+    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+    "admin": true,
+    "entries": [
+      { "name": "EnableSmartScreen", "type": "DWord", "value": "0" }
+    ]
+  },
+  {
+    "name": "Show File Extensions",
+    "description": "Shows file extensions in Explorer.",
+    "path": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "admin": false,
+    "entries": [
+      { "name": "HideFileExt", "type": "DWord", "value": "0" }
+    ]
+  },
+  {
+    "name": "Show Hidden Files",
+    "description": "Shows hidden files and folders in Explorer.",
+    "path": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "admin": false,
+    "entries": [
+      { "name": "Hidden", "type": "DWord", "value": "1" }
+    ]
+  },
+  {
+    "name": "Disable Taskbar Search",
+    "description": "Hides the search box from the taskbar.",
+    "path": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Search",
+    "admin": false,
+    "entries": [
+      { "name": "SearchboxTaskbarMode", "type": "DWord", "value": "0" }
+    ]
+  },
+  {
+    "name": "Disable Taskbar Widgets",
+    "description": "Hides the weather/news widgets from the taskbar.",
+    "path": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "admin": false,
+    "entries": [
+      { "name": "TaskbarDa", "type": "DWord", "value": "0" }
+    ]
+  }
+]

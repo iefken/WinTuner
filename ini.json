@@ -1,0 +1,12 @@
+[
+    {
+        "ActiveProfile": "home"
+    },
+    {
+        "Profile": "home",
+        "ConfigPath": "src\\functions\\Config.ps1",
+        "GUIPath": "src\\gui\\FormUIv3.xaml",
+        "LogPath": "logs",
+        "AppVersion": "0.02"
+    }
+]

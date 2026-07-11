@@ -1,0 +1,54 @@
+[
+  { "category": "Info", "description": "Get Group Policy result & info", "command": "gpresult /r" },
+
+  { "category": "Info: User", "description": "List active users", "command": "quser" },
+  { "category": "Info: User", "description": "List active users as objects", "command": "(quser 2>&1) | ForEach-Object -Process { ($_ -replace '\\s{20}',',') -replace '\\s{2,}',',' } | ConvertFrom-Csv" },
+  { "category": "Info: User", "description": "List active user matching pattern", "command": "quser | Where-Object { $_ -match '<PATTERN>' }" },
+  { "category": "Info: User", "description": "List mapped network drives", "command": "net use" },
+
+  { "category": "Info: Software", "description": "Get PowerShell execution policy", "command": "Get-ExecutionPolicy -List" },
+
+  { "category": "Info: Network", "description": "Trace route to host/IP", "command": "tracert <HOST>" },
+  { "category": "Info: Network", "description": "DNS lookup of host/IP", "command": "nslookup <HOST>" },
+  { "category": "Info: Network", "description": "Full IP configuration", "command": "ipconfig /all" },
+  { "category": "Info: Network", "description": "List IPv4 interfaces", "command": "netsh interface ipv4 show interfaces" },
+  { "category": "Info: Network", "description": "Get IPv4 of Wi-Fi interface", "command": "(Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias Wi-Fi -ErrorAction SilentlyContinue).IPAddress" },
+  { "category": "Info: Network", "description": "Get IPv4 of Ethernet interface", "command": "(Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias Ethernet* -ErrorAction SilentlyContinue).IPAddress" },
+  { "category": "Info: Network", "description": "Get ARP neighbor cache limit", "command": "(netsh interface ipv4 show global)[5] -replace '\\s{2,}',''" },
+  { "category": "Info: Network", "description": "Get active Wi-Fi signal strength", "command": "(netsh wlan show interfaces) -Match '^\\s+Signal' -Replace '^\\s+Signal\\s+:\\s+',''" },
+  { "category": "Info: Network", "description": "Get active Wi-Fi SSID", "command": "(netsh wlan show interfaces) -Match '^\\s+SSID' -Replace '^\\s+SSID\\s+:\\s+',''" },
+
+  { "category": "Info: Hardware", "description": "List present & OK PnP devices", "command": "Get-PnpDevice -PresentOnly -Status OK" },
+  { "category": "Info: Hardware", "description": "List connected printers & comments", "command": "Get-CimInstance -ClassName Win32_Printer | Select-Object Name, Comment" },
+  { "category": "Info: Hardware", "description": "Get BIOS version & release date", "command": "Get-CimInstance -ClassName Win32_BIOS | Select-Object SMBIOSBIOSVersion, ReleaseDate" },
+  { "category": "Info: Hardware", "description": "List connected USB devices", "command": "Get-CimInstance Win32_PnPEntity | Where-Object { $_.DeviceID -like 'USB*' } | Select-Object Name, DeviceID, Status, Manufacturer" },
+
+  { "category": "Info: Files", "description": "Search files in current folder for pattern", "command": "Get-ChildItem -Recurse | Select-String -Pattern '<PATTERN>'" },
+  { "category": "Info: Files", "description": "Get current user's startup items", "command": "Get-ChildItem -Path \"$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\"" },
+  { "category": "Info: Files", "description": "Get public (all-users) startup items", "command": "Get-ChildItem -Path 'C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup'" },
+  { "category": "Info: Files", "description": "Get public desktop items", "command": "Get-ChildItem -Path 'C:\\Users\\Public\\Desktop'" },
+  { "category": "Info: Files", "description": "Get size of C:\\Windows\\Temp (MB)", "command": "(Get-ChildItem -Path 'C:\\Windows\\Temp' -Recurse -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1MB" },
+  { "category": "Info: Files", "description": "Get free disk space per drive (GB)", "command": "Get-CimInstance -Class Win32_LogicalDisk | Select-Object DeviceID, VolumeName, @{ Label='FreeGB'; Expression={ ($_.FreeSpace/1GB).ToString('F1') } }, @{ Label='TotalGB'; Expression={ ($_.Size/1GB).ToString('F1') } }" },
+
+  { "category": "Info: System", "description": "Get last reboot time", "command": "(Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object csname, lastbootuptime).lastbootuptime" },
+  { "category": "Info: System", "description": "Get Windows OS name", "command": "(Get-ComputerInfo).OsName" },
+  { "category": "Info: System", "description": "Get Windows display version (23H2/24H2/...)", "command": "(Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion').DisplayVersion" },
+  { "category": "Info: System", "description": "Find process by name", "command": "Get-Process '*<NAME>*'" },
+  { "category": "Info: System", "description": "Top processes by memory", "command": "Get-Process | Sort-Object WorkingSet -Descending | Select-Object Name, Id, @{ Name='Memory(MB)'; Expression={ [math]::Round($_.WorkingSet/1MB, 2) } }, CPU" },
+
+  { "category": "Action", "description": "Force Group Policy update", "command": "gpupdate /force" },
+
+  { "category": "Action: Software", "description": "Uninstall app by name (WMI)", "command": "(Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like '*<APP>*' }).Uninstall()" },
+  { "category": "Action: Software", "description": "Uninstall app by name (Package)", "command": "Get-Package '*<APP>*' | Uninstall-Package -Force -ErrorAction SilentlyContinue" },
+  { "category": "Action: Software", "description": "Set execution policy RemoteSigned (LocalMachine)", "command": "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine" },
+  { "category": "Action: Software", "description": "Install RSAT tools", "command": "Get-WindowsCapability -Name RSAT* -Online | Add-WindowsCapability -Online" },
+
+  { "category": "Action: Network", "description": "Enable TLS 1.2 for this session", "command": "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12" },
+  { "category": "Action: Network", "description": "Set ARP neighbor cache limit", "command": "netsh interface ipv4 set global neighborcachelimit=4096" },
+  { "category": "Action: Network", "description": "Connect to a Wi-Fi profile", "command": "netsh wlan connect name=\"<SSID>\"" },
+  { "category": "Action: Network", "description": "Ping host/IP", "command": "ping <HOST>" },
+  { "category": "Action: Network", "description": "Reset IP stack", "command": "netsh int ip reset" },
+  { "category": "Action: Network", "description": "Flush DNS cache", "command": "ipconfig /flushdns" },
+
+  { "category": "Action: Files", "description": "Grant a user Full Control on a folder", "command": "icacls '<FOLDER>' /grant '<USER>:(OI)(CI)M'" }
+]

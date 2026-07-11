@@ -1,0 +1,177 @@
+[
+  {
+    "id": "7zip.7zip",
+    "name": "7-Zip",
+    "category": "Utilities",
+    "description": "Free and open-source file archiver with high compression ratio",
+    "winget": "7zip.7zip"
+  },
+  {
+    "id": "Google.Chrome",
+    "name": "Google Chrome",
+    "category": "Browsers",
+    "description": "Fast and secure web browser from Google",
+    "winget": "Google.Chrome"
+  },
+  {
+    "id": "Mozilla.Firefox",
+    "name": "Mozilla Firefox",
+    "category": "Browsers",
+    "description": "Open-source web browser focused on privacy",
+    "winget": "Mozilla.Firefox"
+  },
+  {
+    "id": "Brave.Brave",
+    "name": "Brave Browser",
+    "category": "Browsers",
+    "description": "Privacy-focused browser that blocks ads and trackers",
+    "winget": "Brave.Brave"
+  },
+  {
+    "id": "Microsoft.VisualStudioCode",
+    "name": "Visual Studio Code",
+    "category": "Development",
+    "description": "Code editor redefined and optimized for building and debugging modern web and cloud applications",
+    "winget": "Microsoft.VisualStudioCode"
+  },
+  {
+    "id": "Git.Git",
+    "name": "Git",
+    "category": "Development",
+    "description": "Distributed version control system",
+    "winget": "Git.Git"
+  },
+  {
+    "id": "Python.Python.3.12",
+    "name": "Python 3.12",
+    "category": "Development",
+    "description": "Python programming language and runtime",
+    "winget": "Python.Python.3.12"
+  },
+  {
+    "id": "Notepad++.Notepad++",
+    "name": "Notepad++",
+    "category": "Utilities",
+    "description": "Free source code editor and Notepad replacement",
+    "winget": "Notepad++.Notepad++"
+  },
+  {
+    "id": "VideoLAN.VLC",
+    "name": "VLC Media Player",
+    "category": "Multimedia",
+    "description": "Open-source cross-platform multimedia player",
+    "winget": "VideoLAN.VLC"
+  },
+  {
+    "id": "Audacity.Audacity",
+    "name": "Audacity",
+    "category": "Multimedia",
+    "description": "Free and open-source audio editing software",
+    "winget": "Audacity.Audacity"
+  },
+  {
+    "id": "Bitwarden.Bitwarden",
+    "name": "Bitwarden",
+    "category": "Utilities",
+    "description": "Open-source password management solution",
+    "winget": "Bitwarden.Bitwarden"
+  },
+  {
+    "id": "AgileBits.1Password",
+    "name": "1Password",
+    "category": "Utilities",
+    "description": "Password manager for secure storage and management",
+    "winget": "AgileBits.1Password"
+  },
+  {
+    "id": "Microsoft.PowerShell",
+    "name": "PowerShell",
+    "category": "Development",
+    "description": "Microsoft PowerShell command-line shell and scripting language",
+    "winget": "Microsoft.PowerShell"
+  },
+  {
+    "id": "Microsoft.WindowsTerminal",
+    "name": "Windows Terminal",
+    "category": "Utilities",
+    "description": "Modern terminal application for command-line users",
+    "winget": "Microsoft.WindowsTerminal"
+  },
+  {
+    "id": "Microsoft.Sysinternals.ProcessExplorer",
+    "name": "Process Explorer",
+    "category": "Utilities",
+    "description": "Advanced process management utility from Sysinternals",
+    "winget": "Microsoft.Sysinternals.ProcessExplorer"
+  },
+  {
+    "id": "Microsoft.Sysinternals.Autoruns",
+    "name": "Autoruns",
+    "category": "Utilities",
+    "description": "Shows what programs are configured to run during system bootup or login",
+    "winget": "Microsoft.Sysinternals.Autoruns"
+  },
+  {
+    "id": "Obsidian.Obsidian",
+    "name": "Obsidian",
+    "category": "Utilities",
+    "description": "Note-taking app that works on top of a local folder of plain text Markdown files",
+    "winget": "Obsidian.Obsidian"
+  },
+  {
+    "id": "Discord.Discord",
+    "name": "Discord",
+    "category": "Communication",
+    "description": "Voice, video, and text communication platform",
+    "winget": "Discord.Discord"
+  },
+  {
+    "id": "Spotify.Spotify",
+    "name": "Spotify",
+    "category": "Multimedia",
+    "description": "Music streaming service",
+    "winget": "Spotify.Spotify"
+  },
+  {
+    "id": "Valve.Steam",
+    "name": "Steam",
+    "category": "Games",
+    "description": "Digital distribution platform for games",
+    "winget": "Valve.Steam"
+  },
+  {
+    "id": "EpicGames.EpicGamesLauncher",
+    "name": "Epic Games Launcher",
+    "category": "Games",
+    "description": "Game launcher and store from Epic Games",
+    "winget": "EpicGames.EpicGamesLauncher"
+  },
+  {
+    "id": "GIMP.GIMP",
+    "name": "GIMP",
+    "category": "Multimedia",
+    "description": "GNU Image Manipulation Program - free image editor",
+    "winget": "GIMP.GIMP"
+  },
+  {
+    "id": "Inkscape.Inkscape",
+    "name": "Inkscape",
+    "category": "Multimedia",
+    "description": "Open-source vector graphics editor",
+    "winget": "Inkscape.Inkscape"
+  },
+  {
+    "id": "Klocman.BulkCrapUninstaller",
+    "name": "Bulk Crap Uninstaller",
+    "category": "Utilities",
+    "description": "Free uninstaller utility for removing unwanted programs",
+    "winget": "Klocman.BulkCrapUninstaller"
+  },
+  {
+    "id": "RARLab.WinRAR",
+    "name": "WinRAR",
+    "category": "Utilities",
+    "description": "Popular file compression and archive manager",
+    "winget": "RARLab.WinRAR"
+  }
+]
