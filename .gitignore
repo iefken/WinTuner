@@ -3,6 +3,10 @@
 *.psd1
 *.psm1
 
+# Ignore .ps1 files in specific directories (if needed)
+# src/ directory .ps1 files are tracked
+# Root level Main.ps1 and install.ps1 are tracked
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
