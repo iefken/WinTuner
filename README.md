@@ -307,5 +307,3 @@ This project is licensed under the MIT License.
 ## Acknowledgments
 
 Inspired by [ChrisTitusTech/winutil](https://github.com/ChrisTitusTech/winutil) - a comprehensive Windows utility tool.
-
-Ported from the local-only components of `DHL_DEVICE_MANAGER` project, with remote/network features intentionally excluded to maintain a local-machine-only scope.
