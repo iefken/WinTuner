@@ -32,6 +32,18 @@ catch {
     throw
 }
 
+# Set the window icon programmatically
+$iconPath = Join-Path $Global:ConfigFiles "wintuner.ico"
+if (Test-Path $iconPath) {
+    try {
+        $icon = [System.Drawing.Icon]::ExtractAssociatedIcon($iconPath)
+        $Global:Form.Icon = $icon
+    }
+    catch {
+        Write-Host "Failed to load icon from: $iconPath" -ForegroundColor Yellow
+    }
+}
+
 # Expose each named control as a global variable (e.g. $global:richtxt_Log)
 $XAML.SelectNodes("//*[@Name]") | ForEach-Object {
     Set-Variable -Name $_.Name -Value $Global:Form.FindName($_.Name) -Scope Global -ErrorAction Stop
