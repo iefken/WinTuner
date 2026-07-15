@@ -201,6 +201,22 @@ Function Add_Click_listeners {
     $global:btn_WU_Disable.add_Click({ Handle-btn_WU_Disable })
     $global:btn_WU_Check.add_Click({ Handle-btn_WU_Check })
     $global:btn_WU_OpenSettings.add_Click({ Handle-btn_WU_OpenSettings })
+
+    #--------------------------------------------------------------------
+    # QR Code Generator tab
+    #--------------------------------------------------------------------
+
+    $global:btn_QRCode_Generate.add_Click({ Handle-btn_QRCode_Generate })
+    $global:btn_QRCode_Save.add_Click({ Handle-btn_QRCode_Save })
+    $global:btn_QRCode_Open.add_Click({ Handle-btn_QRCode_Open })
+
+    # Enter in text box triggers generation
+    $global:txt_QRCode_Text.Add_KeyDown({
+        if ($_.Key -eq 'Enter') {
+            $_.Handled = $true
+            Handle-btn_QRCode_Generate
+        }
+    })
 }
 
 #========================================================================

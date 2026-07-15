@@ -243,6 +243,35 @@ class GUI_Handler {
             $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Prepare_ComboBoxes: failed to load DNS providers: $_", 'Red')
         }
 
+        # --- Load network adapters for DNS ---
+        try {
+            $adapters = Get-NetworkAdapters
+            $global:DNSAdaptersList = @($adapters)
+
+            $global:cmb_DNS_Adapter.Items.Clear()
+            foreach ($adapter in $adapters) {
+                $global:cmb_DNS_Adapter.Items.Add($adapter.Name) | Out-Null
+            }
+
+            if ($adapters.Count -gt 0) {
+                $global:cmb_DNS_Adapter.SelectedIndex = 0
+
+                # Load DNS settings for first adapter
+                $firstAdapter = $adapters[0]
+                $dnsSettings = Get-AdapterDNS -InterfaceAlias $firstAdapter.InterfaceAlias
+                $global:lbl_DNS_Primary.Text = $dnsSettings.Primary
+                $global:lbl_DNS_Secondary.Text = $dnsSettings.Secondary
+                $global:lbl_DNS_Method.Text = $dnsSettings.Method
+            } else {
+                $global:lbl_DNS_Primary.Text = "No adapters"
+                $global:lbl_DNS_Secondary.Text = "No adapters"
+                $global:lbl_DNS_Method.Text = "N/A"
+            }
+        }
+        catch {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Prepare_ComboBoxes: failed to load network adapters: $_", 'Red')
+        }
+
         # --- Load initial power plan ---
         try {
             $activePlan = Get-ActivePowerPlan
@@ -250,6 +279,26 @@ class GUI_Handler {
                 $global:lbl_Perf_Current.Text = $activePlan.Name
             } else {
                 $global:lbl_Perf_Current.Text = "Unknown"
+            }
+
+            # Populate power plans ComboBox
+            $plans = Get-PowerPlans
+            $global:PowerPlansList = @($plans)
+
+            $global:cmb_Perf_Plan.Items.Clear()
+            foreach ($plan in $plans) {
+                $display = if ($plan.IsActive) { "$($plan.Name) (Active)" } else { $plan.Name }
+                $global:cmb_Perf_Plan.Items.Add($display) | Out-Null
+            }
+
+            # Select current plan
+            if ($activePlan) {
+                for ($i = 0; $i -lt $plans.Count; $i++) {
+                    if ($plans[$i].Guid -eq $activePlan.Guid) {
+                        $global:cmb_Perf_Plan.SelectedIndex = $i
+                        break
+                    }
+                }
             }
         }
         catch {

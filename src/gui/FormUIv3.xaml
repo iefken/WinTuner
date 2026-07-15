@@ -616,714 +616,808 @@
             </DockPanel>
         </Grid>
 
-        <!-- ============ Feature tabs (grown per phase) ============ -->
+        <!-- ============ Feature tabs (grouped by category) ============ -->
         <TabControl x:Name="tbc_Main" Grid.Row="2" Margin="16,0,16,0" Padding="0">
 
-            <!-- ===================== Local PS ===================== -->
-            <TabItem x:Name="tab_LocalPS" ToolTip="Run PowerShell on this machine">
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#x1F4BB;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Local PS" VerticalAlignment="Center" />
-                    </StackPanel>
-                </TabItem.Header>
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="5" />
-                        <RowDefinition Height="*" MinHeight="120" />
-                    </Grid.RowDefinitions>
-
-                    <!-- Search + description picker -->
-                    <Grid Grid.Row="0" Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="180" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Label   Grid.Column="0" Content="Search:" VerticalAlignment="Center" />
-                        <TextBox x:Name="cmb_LocalPS" Grid.Column="1" VerticalAlignment="Center"
-                                 ToolTip="Type to filter the preset list" />
-                        <Label   Grid.Column="2" Content="Preset:" Margin="12,0,0,0" VerticalAlignment="Center" />
-                        <ComboBox x:Name="cmb_LocalPS_Desc" Grid.Column="3" Margin="6,0,0,0"
-                                  IsEditable="False" IsTextSearchEnabled="False" VerticalAlignment="Center" />
-                    </Grid>
-
-                    <!-- Command editor -->
-                    <Label   Grid.Row="1" Content="Command:" />
-                    <TextBox x:Name="cmb_LocalPS_Command" Grid.Row="2"
-                             Height="90" AcceptsReturn="True" TextWrapping="Wrap"
-                             VerticalContentAlignment="Top"
-                             VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas"
-                             ToolTip="Enter = run, Shift+Enter = newline" />
-
-                    <!-- Run row -->
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8">
-                        <Button x:Name="btn_Run_LocalPS" Content="Run command"
-                                Style="{StaticResource PrimaryButton}" Width="120" Height="28" />
-                        <Button x:Name="btn_Clear_LocalPS" Content="Clear output" Width="110" Height="28" Margin="8,0,0,0" />
-                        <TextBlock Text="Runs in this app's PowerShell session. Use $global: vars to keep values between commands."
-                                   VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Text.Faint}" />
-                    </StackPanel>
-
-                    <GridSplitter Grid.Row="4" Height="5" HorizontalAlignment="Stretch"
-                                  ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" />
-
-                    <!-- Output console -->
-                    <TextBox x:Name="txt_cmdline_LocalPS" Grid.Row="5"
-                             AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap"
-                             VerticalContentAlignment="Top"
-                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                             FontFamily="Cascadia Mono, Consolas" FontSize="12"
-                             Background="{StaticResource Console.Bg}" Foreground="{StaticResource Console.Fg}" />
-                </Grid>
-            </TabItem>
-
-            <!-- ==================== File Cleanup ==================== -->
-            <TabItem x:Name="tab_FileCleanup" ToolTip="Find and remove files in a folder">
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#x1F9F9;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Storage Cleanup" VerticalAlignment="Center" />
-                    </StackPanel>
-                </TabItem.Header>
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" MinHeight="120" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <!-- Folder row -->
-                    <Grid Grid.Row="0" Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Label    Grid.Column="0" Content="Folder:" VerticalAlignment="Center" />
-                        <ComboBox x:Name="cmb_FC_Path" Grid.Column="1" Margin="6,0" IsEditable="True"
-                                  VerticalAlignment="Center" ToolTip="Pick a preset or type/paste a folder path" />
-                        <Button   x:Name="btn_FC_Browse" Grid.Column="2" Content="Browse..." Width="90" Height="26" />
-                    </Grid>
-
-                    <!-- Filter row -->
-                    <Grid Grid.Row="1" Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="220" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Label   Grid.Column="0" Content="Name contains:" VerticalAlignment="Center" />
-                        <TextBox x:Name="txt_FC_Filter" Grid.Column="1" Margin="6,0" VerticalAlignment="Center"
-                                 ToolTip="Blank = every file. Plain text = name CONTAINS that text. Use * (any chars) or ? (one char) for explicit wildcards." />
-                        <CheckBox x:Name="chk_FC_Recurse" Grid.Column="2" Content="Include subfolders"
-                                  Margin="12,0,0,0" VerticalAlignment="Center" />
-                        <CheckBox x:Name="chk_FC_Recycle" Grid.Column="3" Content="Send to Recycle Bin (recommended)"
-                                  Margin="16,0,0,0" VerticalAlignment="Center" IsChecked="True"
-                                  ToolTip="Checked: files go to the Recycle Bin (recoverable). Unchecked: permanent delete, no undo.&#10;Note: Windows still permanently deletes files on network shares, removable/USB drives, or any file larger than the Recycle Bin's size limit - even when this is checked." />
-                    </Grid>
-
-                    <!-- Matching-rules hint (always visible) -->
-                    <TextBlock Grid.Row="2" Margin="0,0,0,6" Foreground="{StaticResource Text.Faint}" TextWrapping="Wrap"
-                               Text="Preview lists files in the folder above whose name matches 'Name contains' (blank = all; plain text = contains; * / ? = wildcards), searching subfolders only when 'Include subfolders' is ticked." />
-
-                    <!-- Action row -->
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
-                        <Button x:Name="btn_FC_Preview" Content="Preview"
-                                Style="{StaticResource PrimaryButton}" Width="110" Height="28" />
-                        <Button x:Name="btn_FC_Delete"  Content="Delete listed"
-                                Style="{StaticResource DangerButton}" Width="120" Height="28" Margin="8,0,0,0" />
-                        <TextBlock x:Name="lbl_FC_Count" Text="No preview yet."
-                                   VerticalAlignment="Center" Margin="14,0,0,0" Foreground="{StaticResource Text.Muted}" />
-                    </StackPanel>
-
-                    <!-- Results grid -->
-                    <DataGrid x:Name="dgr_FC_Results" Grid.Row="4"
-                              AutoGenerateColumns="False" IsReadOnly="True"
-                              CanUserAddRows="False" GridLinesVisibility="Horizontal"
-                              HeadersVisibility="Column" SelectionMode="Extended">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="#"        Binding="{Binding nr}"       Width="40" />
-                            <DataGridTextColumn Header="Name"     Binding="{Binding Name}"     Width="2*" />
-                            <DataGridTextColumn Header="Size (KB)" Binding="{Binding SizeKB}"  Width="90" />
-                            <DataGridTextColumn Header="Modified" Binding="{Binding Modified}" Width="150" />
-                            <DataGridTextColumn Header="Full path" Binding="{Binding FullName}" Width="3*" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-
-                    <TextBlock Grid.Row="5" Margin="0,8,0,0" Foreground="{StaticResource Danger}"
-                               Text="Delete acts on exactly the files listed above. Preview first." />
-                </Grid>
-            </TabItem>
-
-            <!-- =================== Registry Tweaks =================== -->
-            <TabItem x:Name="tab_Registry" ToolTip="Apply preset registry tweaks">
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#x2699;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Registry" VerticalAlignment="Center" />
-                    </StackPanel>
-                </TabItem.Header>
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" MinHeight="120" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <!-- Tweak picker -->
-                    <Grid Grid.Row="0" Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Label    Grid.Column="0" Content="Tweak:" VerticalAlignment="Center" />
-                        <ComboBox x:Name="cmb_Reg_Tweak" Grid.Column="1" Margin="6,0" VerticalAlignment="Center" />
-                    </Grid>
-
-                    <!-- Description -->
-                    <TextBlock x:Name="lbl_Reg_Desc" Grid.Row="1" Margin="0,0,0,4"
-                               TextWrapping="Wrap" Foreground="{StaticResource Text.Muted}" Text="Pick a tweak to see what it does." />
-
-                    <!-- Path -->
-                    <Grid Grid.Row="2" Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Label   Grid.Column="0" Content="Key path:" VerticalAlignment="Center" />
-                        <TextBox x:Name="txt_Reg_Path" Grid.Column="1" Margin="6,0" IsReadOnly="True"
-                                 VerticalAlignment="Center" FontFamily="Cascadia Mono, Consolas" />
-                    </Grid>
-
-                    <!-- Entries -->
-                    <DataGrid x:Name="dgr_Reg_Entries" Grid.Row="3"
-                              AutoGenerateColumns="False" CanUserAddRows="False"
-                              GridLinesVisibility="Horizontal" HeadersVisibility="Column">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Value name" Binding="{Binding Key}"      Width="2*" IsReadOnly="True" />
-                            <DataGridTextColumn Header="Type"       Binding="{Binding Type}"     Width="80" IsReadOnly="True" />
-                            <DataGridTextColumn Header="Current"    Binding="{Binding Current}"  Width="*"  IsReadOnly="True" />
-                            <DataGridTextColumn Header="New value"  Binding="{Binding NewValue}" Width="*"  IsReadOnly="False" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-
-                    <!-- Actions -->
-                    <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button x:Name="btn_Reg_GetValue" Content="Read current" Width="110" Height="28" />
-                        <Button x:Name="btn_Reg_Apply"    Content="Apply tweak"
-                                Style="{StaticResource PrimaryButton}" Width="110" Height="28" Margin="8,0,0,0" />
-                        <TextBlock x:Name="lbl_Reg_AdminWarn" VerticalAlignment="Center" Margin="14,0,0,0" Foreground="{StaticResource Danger}" />
-                    </StackPanel>
-
-                    <TextBlock Grid.Row="5" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
-                               Text="The 'New value' column is editable. HKLM / HKU keys need the app run as Administrator." />
-                </Grid>
-            </TabItem>
-
-            <!-- ===================== COM Ports ====================== -->
-            <TabItem x:Name="tab_COM" ToolTip="Watch serial/COM devices connect and disconnect">
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#x1F50C;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="COM Ports" VerticalAlignment="Center" />
-                    </StackPanel>
-                </TabItem.Header>
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" MinHeight="120" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <!-- Controls -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                        <Button x:Name="btn_COM_Start"   Content="Start monitoring"
-                                Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
-                        <Button x:Name="btn_COM_Stop"    Content="Stop" Width="70" Height="28" Margin="8,0,0,0" />
-                        <Button x:Name="btn_COM_Refresh" Content="List now" Width="90" Height="28" Margin="8,0,0,0" />
-                        <CheckBox x:Name="chk_COM_Beep" Content="Beep on change" VerticalAlignment="Center" Margin="16,0,0,0" />
-                        <TextBlock x:Name="lbl_COM_Status" Text="Idle." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
-                    </StackPanel>
-
-                    <!-- Event/port grid -->
-                    <DataGrid x:Name="dgr_COM_Results" Grid.Row="1"
-                              AutoGenerateColumns="False" IsReadOnly="True"
-                              CanUserAddRows="False" GridLinesVisibility="Horizontal" HeadersVisibility="Column">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Time"         Binding="{Binding Time}"         Width="80" />
-                            <DataGridTextColumn Header="Event"        Binding="{Binding Event}"        Width="80" />
-                            <DataGridTextColumn Header="COM"          Binding="{Binding COM}"          Width="70" />
-                            <DataGridTextColumn Header="Name"         Binding="{Binding Name}"         Width="2*" />
-                            <DataGridTextColumn Header="Manufacturer" Binding="{Binding Manufacturer}" Width="*" />
-                            <DataGridTextColumn Header="PNP device ID" Binding="{Binding PNPDeviceID}" Width="2*" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-
-                    <TextBlock Grid.Row="2" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
-                               Text="Polls every 2s while monitoring. PRESENT = already connected at start; ADDED/REMOVED = changes since." />
-                </Grid>
-            </TabItem>
-
-            <!-- ==================== Diagnostics ===================== -->
-            <TabItem x:Name="tab_Diag" ToolTip="Local network diagnostics">
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#x1F310;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Network Diagnostics" VerticalAlignment="Center" />
-                    </StackPanel>
-                </TabItem.Header>
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" MinHeight="120" />
-                    </Grid.RowDefinitions>
-
-                    <!-- Target row -->
-                    <Grid Grid.Row="0" Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="60" />
-                        </Grid.ColumnDefinitions>
-                        <Label   Grid.Column="0" Content="Target host/IP:" VerticalAlignment="Center" />
-                        <TextBox x:Name="txt_Diag_Target" Grid.Column="1" Margin="6,0" VerticalAlignment="Center"
-                                 ToolTip="Needed for ping / tracert / nslookup. Not needed for ipconfig." />
-                        <Label   Grid.Column="2" Content="Ping count:" Margin="12,0,0,0" VerticalAlignment="Center" />
-                        <TextBox x:Name="txt_Diag_PingCount" Grid.Column="3" Margin="6,0" Text="4" VerticalAlignment="Center" />
-                    </Grid>
-
-                    <!-- Checks row -->
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-                        <CheckBox x:Name="chk_Diag_IPConfig" Content="ipconfig /all" VerticalAlignment="Center" />
-                        <CheckBox x:Name="chk_Diag_NSLookup" Content="nslookup" VerticalAlignment="Center" Margin="14,0,0,0" />
-                        <CheckBox x:Name="chk_Diag_Ping" Content="ping" IsChecked="True" VerticalAlignment="Center" Margin="14,0,0,0" />
-                        <CheckBox x:Name="chk_Diag_Tracert" Content="tracert (slow)" VerticalAlignment="Center" Margin="14,0,0,0" />
-                    </StackPanel>
-
-                    <!-- Action row -->
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
-                        <Button x:Name="btn_Diag_Run"   Content="Run"
-                                Style="{StaticResource PrimaryButton}" Width="90" Height="28" />
-                        <Button x:Name="btn_Diag_Stop"  Content="Stop" Width="70" Height="28" Margin="8,0,0,0" />
-                        <Button x:Name="btn_Diag_Clear" Content="Clear" Width="70" Height="28" Margin="8,0,0,0" />
-                        <Button x:Name="btn_Diag_Save"  Content="Save log..." Width="90" Height="28" Margin="8,0,0,0" />
-                        <TextBlock x:Name="lbl_Diag_Status" Text="Idle." VerticalAlignment="Center" Margin="14,0,0,0" Foreground="{StaticResource Text.Muted}" />
-                    </StackPanel>
-
-                    <!-- Output console -->
-                    <TextBox x:Name="txt_Diag_Output" Grid.Row="3"
-                             AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap"
-                             VerticalContentAlignment="Top"
-                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                             FontFamily="Cascadia Mono, Consolas" FontSize="12"
-                             Background="{StaticResource Console.Bg}" Foreground="{StaticResource Console.Fg}" />
-                </Grid>
-            </TabItem>
-
-            <!-- ==================== WinGet Apps ==================== -->
-            <TabItem x:Name="tab_WinGet" ToolTip="Install and manage applications via WinGet">
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#x1F4E6;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="WinGet Apps" VerticalAlignment="Center" />
-                    </StackPanel>
-                </TabItem.Header>
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" MinHeight="200" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <!-- Search and filter row -->
-                    <Grid Grid.Row="0" Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="140" />
-                        </Grid.ColumnDefinitions>
-                        <Label   Grid.Column="0" Content="Search:" VerticalAlignment="Center" />
-                        <TextBox x:Name="txt_WinGet_Search" Grid.Column="1" Margin="6,0" VerticalAlignment="Center"
-                                 ToolTip="Search available WinGet packages (Enter to search)" />
-                        <Label   Grid.Column="2" Content="Category:" Margin="12,0,0,0" VerticalAlignment="Center" />
-                        <ComboBox x:Name="cmb_WinGet_Category" Grid.Column="3" Margin="6,0" VerticalAlignment="Center" />
-                    </Grid>
-
-                    <!-- Action buttons row -->
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-                        <Button x:Name="btn_WinGet_Search" Content="Search" Width="80" Height="28" />
-                        <Button x:Name="btn_WinGet_GetInstalled" Content="Get Installed" Width="100" Height="28" Margin="8,0,0,0" />
-                        <Button x:Name="btn_WinGet_Clear" Content="Clear" Width="70" Height="28" Margin="8,0,0,0" />
-                        <TextBlock x:Name="lbl_WinGet_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
-                    </StackPanel>
-
-                    <!-- App list grid -->
-                    <DataGrid x:Name="dgr_WinGet_Apps" Grid.Row="2"
-                              AutoGenerateColumns="False"
-                              CanUserAddRows="False" GridLinesVisibility="Horizontal"
-                              HeadersVisibility="Column" SelectionMode="Extended"
-                              MaxHeight="300">
-                        <DataGrid.Columns>
-                            <DataGridCheckBoxColumn Header="Select" Binding="{Binding Selected}" Width="50" />
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" IsReadOnly="True" />
-                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="2*" IsReadOnly="True" />
-                            <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="100" IsReadOnly="True" />
-                            <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="120" IsReadOnly="True" />
-                            <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="80" IsReadOnly="True" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-
-                    <!-- Install/Uninstall buttons -->
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button x:Name="btn_WinGet_Install" Content="Install Selected"
-                                Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
-                        <Button x:Name="btn_WinGet_Update" Content="Update All" Width="100" Height="28" Margin="8,0,0,0" />
-                        <Button x:Name="btn_WinGet_Uninstall" Content="Uninstall Selected"
-                                Style="{StaticResource DangerButton}" Width="140" Height="28" Margin="8,0,0,0" />
-                        <TextBlock Text="Requires WinGet to be installed on the system."
-                                   VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Faint}" />
-                    </StackPanel>
-
-                    <TextBlock Grid.Row="4" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
-                               Text="WinGet is the Windows Package Manager. Install apps by selecting them and clicking 'Install Selected'. Use 'Get Installed' to see what's already on your system." />
-                </Grid>
-            </TabItem>
-
-            <!-- ==================== Windows Features ==================== -->
-            <TabItem x:Name="tab_WindowsFeatures" ToolTip="Enable or disable Windows optional features">
+            <!-- ===================== System Tweaks ===================== -->
+            <TabItem x:Name="tab_System" ToolTip="System settings and tools">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#x1F5A5;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Windows Features" VerticalAlignment="Center" />
+                        <TextBlock Text="System Tweaks" VerticalAlignment="Center" />
                     </StackPanel>
                 </TabItem.Header>
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" MinHeight="200" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
+                <TabControl Margin="0" Padding="0" BorderThickness="0">
+                    <!-- Windows Features -->
+                    <TabItem x:Name="tab_WindowsFeatures" ToolTip="Enable or disable Windows optional features">
+                        <TabItem.Header>
+                            <TextBlock Text="Windows Features" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="200" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                    <!-- Category filter -->
-                    <Grid Grid.Row="0" Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="140" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Label   Grid.Column="0" Content="Category:" VerticalAlignment="Center" />
-                        <ComboBox x:Name="cmb_WinFeat_Category" Grid.Column="1" Margin="6,0" VerticalAlignment="Center" />
-                        <Button   x:Name="btn_WinFeat_Refresh" Grid.Column="2" Content="Refresh List" Width="100" Height="28" Margin="12,0,0,0" />
-                        <TextBlock x:Name="lbl_WinFeat_Status" Grid.Column="3" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
-                    </Grid>
+                            <!-- Category filter -->
+                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Label   Grid.Column="0" Content="Category:" VerticalAlignment="Center" />
+                                <ComboBox x:Name="cmb_WinFeat_Category" Grid.Column="1" Margin="6,0" VerticalAlignment="Center" />
+                                <Button   x:Name="btn_WinFeat_Refresh" Grid.Column="2" Content="Refresh List" Width="100" Height="28" Margin="12,0,0,0" />
+                                <TextBlock x:Name="lbl_WinFeat_Status" Grid.Column="3" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </Grid>
 
-                    <!-- Features grid -->
-                    <DataGrid x:Name="dgr_WinFeat_Features" Grid.Row="1"
-                              AutoGenerateColumns="False" IsReadOnly="True"
-                              CanUserAddRows="False" GridLinesVisibility="Horizontal"
-                              HeadersVisibility="Column" SelectionMode="Extended"
-                              MaxHeight="300">
-                        <DataGrid.Columns>
-                            <DataGridCheckBoxColumn Header="Select" Binding="{Binding Selected}" Width="50" />
-                            <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="2*" />
-                            <DataGridTextColumn Header="Internal Name" Binding="{Binding Name}" Width="2*" />
-                            <DataGridTextColumn Header="State" Binding="{Binding State}" Width="80" />
-                            <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="100" />
-                        </DataGrid.Columns>
-                    </DataGrid>
+                            <!-- Features grid -->
+                            <DataGrid x:Name="dgr_WinFeat_Features" Grid.Row="1"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                                      HeadersVisibility="Column" SelectionMode="Extended"
+                                      MaxHeight="300">
+                                <DataGrid.Columns>
+                                    <DataGridCheckBoxColumn Header="Select" Binding="{Binding Selected}" Width="50" />
+                                    <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="2*" />
+                                    <DataGridTextColumn Header="Internal Name" Binding="{Binding Name}" Width="2*" />
+                                    <DataGridTextColumn Header="State" Binding="{Binding State}" Width="80" />
+                                    <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="100" />
+                                </DataGrid.Columns>
+                            </DataGrid>
 
-                    <!-- Action buttons -->
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button x:Name="btn_WinFeat_Enable" Content="Enable Selected"
-                                Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
-                        <Button x:Name="btn_WinFeat_Disable" Content="Disable Selected"
-                                Style="{StaticResource DangerButton}" Width="140" Height="28" Margin="8,0,0,0" />
-                        <CheckBox x:Name="chk_WinFeat_NoRestart" Content="No restart" VerticalAlignment="Center" Margin="16,0,0,0"
-                                  ToolTip="Suppress restart prompt (may not work for all features)" />
-                        <TextBlock Text="Some features may require a system restart."
-                                   VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Faint}" />
-                    </StackPanel>
+                            <!-- Action buttons -->
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button x:Name="btn_WinFeat_Enable" Content="Enable Selected"
+                                        Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
+                                <Button x:Name="btn_WinFeat_Disable" Content="Disable Selected"
+                                        Style="{StaticResource DangerButton}" Width="140" Height="28" Margin="8,0,0,0" />
+                                <CheckBox x:Name="chk_WinFeat_NoRestart" Content="No restart" VerticalAlignment="Center" Margin="16,0,0,0"
+                                          ToolTip="Suppress restart prompt (may not work for all features)" />
+                                <TextBlock Text="Some features may require a system restart."
+                                           VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Faint}" />
+                            </StackPanel>
 
-                    <TextBlock Grid.Row="3" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
-                               Text="Enable or disable Windows optional features like WSL, Hyper-V, Sandbox, and more. Select features and click Enable or Disable." />
-                </Grid>
+                            <TextBlock Grid.Row="3" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="Enable or disable Windows optional features like WSL, Hyper-V, Sandbox, and more. Select features and click Enable or Disable." />
+                        </Grid>
+                    </TabItem>
+
+                    <!-- System Fixes -->
+                    <TabItem x:Name="tab_SystemFixes" ToolTip="Common system repair tools">
+                        <TabItem.Header>
+                            <TextBlock Text="System Fixes" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="100" />
+                            </Grid.RowDefinitions>
+
+                            <!-- System File Checker -->
+                            <GroupBox Grid.Row="0" Header="System File Checker (SFC)" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" Margin="8,8,8,12">
+                                    <Button x:Name="btn_SysFix_SFC" Content="Run SFC Scan"
+                                            Style="{StaticResource PrimaryButton}" Width="120" Height="28" />
+                                    <TextBlock Text="Scans and repairs Windows system files. May require administrator privileges."
+                                               VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Text.Faint}" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- DISM Repair -->
+                            <GroupBox Grid.Row="1" Header="DISM Repair" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" Margin="8,8,8,12">
+                                    <Button x:Name="btn_SysFix_DISM" Content="Run DISM Repair"
+                                            Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
+                                    <TextBlock Text="Repairs the Windows image. Use if SFC fails to repair files."
+                                               VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Text.Faint}" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Network Reset -->
+                            <GroupBox Grid.Row="2" Header="Network Reset" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" Margin="8,8,8,12">
+                                    <Button x:Name="btn_SysFix_NetReset" Content="Reset Network"
+                                            Style="{StaticResource DangerButton}" Width="120" Height="28" />
+                                    <TextBlock Text="Resets network settings (flushes DNS, resets IP, Winsock). May disconnect from network."
+                                               VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Text.Faint}" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Windows Update Reset -->
+                            <GroupBox Grid.Row="3" Header="Windows Update Reset" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" Margin="8,8,8,12">
+                                    <Button x:Name="btn_SysFix_WUReset" Content="Reset Windows Update"
+                                            Style="{StaticResource DangerButton}" Width="150" Height="28" />
+                                    <Button x:Name="btn_SysFix_WUClear" Content="Clear Cache" Width="100" Height="28" Margin="8,0,0,0" />
+                                    <TextBlock Text="Resets Windows Update components or clears the update cache."
+                                               VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Text.Faint}" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <TextBlock Grid.Row="4" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="These tools can help fix common Windows issues. Some operations may require administrator privileges and may temporarily disconnect you from the network." />
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Performance -->
+                    <TabItem x:Name="tab_Performance" ToolTip="Change Windows power plans">
+                        <TabItem.Header>
+                            <TextBlock Text="Performance" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="100" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Current plan -->
+                            <GroupBox Grid.Row="0" Header="Current Power Plan" Margin="0,0,0,12">
+                                <Grid Margin="8,8,8,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Label   Grid.Column="0" Content="Active Plan:" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lbl_Perf_Current" Grid.Column="1" Text="Loading..." VerticalAlignment="Center" Margin="6,0" Foreground="{StaticResource Text.Muted}" />
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Plan selection -->
+                            <GroupBox Grid.Row="1" Header="Select Power Plan" Margin="0,0,0,12">
+                                <Grid Margin="8,8,8,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Label   Grid.Column="0" Content="Plan:" VerticalAlignment="Center" />
+                                    <ComboBox x:Name="cmb_Perf_Plan" Grid.Column="1" Margin="6,0" VerticalAlignment="Center" />
+                                    <Button   x:Name="btn_Perf_Refresh" Grid.Column="2" Content="Refresh" Width="80" Height="28" Margin="12,0,0,0" />
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Action buttons -->
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
+                                <Button x:Name="btn_Perf_Apply" Content="Apply Plan"
+                                        Style="{StaticResource PrimaryButton}" Width="100" Height="28" />
+                                <Button x:Name="btn_Perf_Ultimate" Content="Enable Ultimate Performance" Width="180" Height="28" Margin="8,0,0,0" />
+                                <TextBlock x:Name="lbl_Perf_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="3" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="Change Windows power plans to optimize performance or power consumption. Ultimate Performance is hidden by default and provides maximum performance at the cost of higher power usage." />
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Windows Update -->
+                    <TabItem x:Name="tab_WindowsUpdate" ToolTip="Control Windows Update settings">
+                        <TabItem.Header>
+                            <TextBlock Text="Windows Update" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="100" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Service status -->
+                            <GroupBox Grid.Row="0" Header="Windows Update Service" Margin="0,0,0,12">
+                                <Grid Margin="8,8,8,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Label   Grid.Column="0" Content="Status:" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lbl_WU_Status" Grid.Column="1" Text="Loading..." VerticalAlignment="Center" Margin="6,0" Foreground="{StaticResource Text.Muted}" />
+                                    <Label   Grid.Column="2" Content="Startup Type:" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                    <TextBlock x:Name="lbl_WU_Startup" Grid.Column="3" Text="Loading..." VerticalAlignment="Center" Margin="6,0" Foreground="{StaticResource Text.Muted}" />
+                                    <Button   x:Name="btn_WU_Refresh" Grid.Column="4" Content="Refresh" Width="80" Height="28" Margin="12,0,0,0" />
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Update mode -->
+                            <GroupBox Grid.Row="1" Header="Update Mode" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" Margin="8,8,8,12">
+                                    <Button x:Name="btn_WU_Manual" Content="Manual (Notify Only)"
+                                            Style="{StaticResource PrimaryButton}" Width="150" Height="28" />
+                                    <Button x:Name="btn_WU_Auto" Content="Automatic"
+                                            Style="{StaticResource PrimaryButton}" Width="100" Height="28" Margin="8,0,0,0" />
+                                    <Button x:Name="btn_WU_Disable" Content="Disable Updates"
+                                            Style="{StaticResource DangerButton}" Width="130" Height="28" Margin="8,0,0,0" />
+                                    <TextBlock Text="Changes may require administrator privileges."
+                                               VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Faint}" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Actions -->
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
+                                <Button x:Name="btn_WU_Check" Content="Check for Updates"
+                                        Style="{StaticResource PrimaryButton}" Width="140" Height="28" />
+                                <Button x:Name="btn_WU_OpenSettings" Content="Open Settings" Width="120" Height="28" Margin="8,0,0,0" />
+                                <TextBlock x:Name="lbl_WU_ActionStatus" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="3" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="Control Windows Update behavior. Manual mode notifies you of updates but doesn't download/install automatically. Automatic mode downloads and installs updates automatically. Disable stops Windows Update entirely." />
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Registry -->
+                    <TabItem x:Name="tab_Registry" ToolTip="Apply preset registry tweaks">
+                        <TabItem.Header>
+                            <TextBlock Text="Registry" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="120" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Tweak picker -->
+                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Label    Grid.Column="0" Content="Tweak:" VerticalAlignment="Center" />
+                                <ComboBox x:Name="cmb_Reg_Tweak" Grid.Column="1" Margin="6,0" VerticalAlignment="Center" />
+                            </Grid>
+
+                            <!-- Description -->
+                            <TextBlock x:Name="lbl_Reg_Desc" Grid.Row="1" Margin="0,0,0,4"
+                                       TextWrapping="Wrap" Foreground="{StaticResource Text.Muted}" Text="Pick a tweak to see what it does." />
+
+                            <!-- Path -->
+                            <Grid Grid.Row="2" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Label   Grid.Column="0" Content="Key path:" VerticalAlignment="Center" />
+                                <TextBox x:Name="txt_Reg_Path" Grid.Column="1" Margin="6,0" IsReadOnly="True"
+                                         VerticalAlignment="Center" FontFamily="Cascadia Mono, Consolas" />
+                            </Grid>
+
+                            <!-- Entries -->
+                            <DataGrid x:Name="dgr_Reg_Entries" Grid.Row="3"
+                                      AutoGenerateColumns="False" CanUserAddRows="False"
+                                      GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Value name" Binding="{Binding Key}"      Width="2*" IsReadOnly="True" />
+                                    <DataGridTextColumn Header="Type"       Binding="{Binding Type}"     Width="80" IsReadOnly="True" />
+                                    <DataGridTextColumn Header="Current"    Binding="{Binding Current}"  Width="*"  IsReadOnly="True" />
+                                    <DataGridTextColumn Header="New value"  Binding="{Binding NewValue}" Width="*"  IsReadOnly="False" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Actions -->
+                            <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button x:Name="btn_Reg_GetValue" Content="Read current" Width="110" Height="28" />
+                                <Button x:Name="btn_Reg_Apply"    Content="Apply tweak"
+                                        Style="{StaticResource PrimaryButton}" Width="110" Height="28" Margin="8,0,0,0" />
+                                <TextBlock x:Name="lbl_Reg_AdminWarn" VerticalAlignment="Center" Margin="14,0,0,0" Foreground="{StaticResource Danger}" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="5" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="The 'New value' column is editable. HKLM / HKU keys need the app run as Administrator." />
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Local PS -->
+                    <TabItem x:Name="tab_LocalPS" ToolTip="Run PowerShell on this machine">
+                        <TabItem.Header>
+                            <TextBlock Text="Local PS" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="5" />
+                                <RowDefinition Height="*" MinHeight="120" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Search + description picker -->
+                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="180" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Label   Grid.Column="0" Content="Search:" VerticalAlignment="Center" />
+                                <TextBox x:Name="cmb_LocalPS" Grid.Column="1" VerticalAlignment="Center"
+                                         ToolTip="Type to filter the preset list" />
+                                <Label   Grid.Column="2" Content="Preset:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <ComboBox x:Name="cmb_LocalPS_Desc" Grid.Column="3" Margin="6,0,0,0"
+                                          IsEditable="False" IsTextSearchEnabled="False" VerticalAlignment="Center" />
+                            </Grid>
+
+                            <!-- Command editor -->
+                            <Label   Grid.Row="1" Content="Command:" />
+                            <TextBox x:Name="cmb_LocalPS_Command" Grid.Row="2"
+                                     Height="90" AcceptsReturn="True" TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top"
+                                     VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas"
+                                     ToolTip="Enter = run, Shift+Enter = newline" />
+
+                            <!-- Run row -->
+                            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8">
+                                <Button x:Name="btn_Run_LocalPS" Content="Run command"
+                                        Style="{StaticResource PrimaryButton}" Width="120" Height="28" />
+                                <Button x:Name="btn_Clear_LocalPS" Content="Clear output" Width="110" Height="28" Margin="8,0,0,0" />
+                                <TextBlock Text="Runs in this app's PowerShell session. Use $global: vars to keep values between commands."
+                                           VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Text.Faint}" />
+                            </StackPanel>
+
+                            <GridSplitter Grid.Row="4" Height="5" HorizontalAlignment="Stretch"
+                                          ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" />
+
+                            <!-- Output console -->
+                            <TextBox x:Name="txt_cmdline_LocalPS" Grid.Row="5"
+                                     AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap"
+                                     VerticalContentAlignment="Top"
+                                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                     FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                                     Background="{StaticResource Console.Bg}" Foreground="{StaticResource Console.Fg}" />
+                        </Grid>
+                    </TabItem>
+                </TabControl>
             </TabItem>
 
-            <!-- ==================== System Fixes ==================== -->
-            <TabItem x:Name="tab_SystemFixes" ToolTip="Common system repair tools">
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#x1F527;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="System Fixes" VerticalAlignment="Center" />
-                    </StackPanel>
-                </TabItem.Header>
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" MinHeight="100" />
-                    </Grid.RowDefinitions>
-
-                    <!-- System File Checker -->
-                    <GroupBox Grid.Row="0" Header="System File Checker (SFC)" Margin="0,0,0,12">
-                        <StackPanel Orientation="Horizontal" Margin="8,8,8,12">
-                            <Button x:Name="btn_SysFix_SFC" Content="Run SFC Scan"
-                                    Style="{StaticResource PrimaryButton}" Width="120" Height="28" />
-                            <TextBlock Text="Scans and repairs Windows system files. May require administrator privileges."
-                                       VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Text.Faint}" />
-                        </StackPanel>
-                    </GroupBox>
-
-                    <!-- DISM Repair -->
-                    <GroupBox Grid.Row="1" Header="DISM Repair" Margin="0,0,0,12">
-                        <StackPanel Orientation="Horizontal" Margin="8,8,8,12">
-                            <Button x:Name="btn_SysFix_DISM" Content="Run DISM Repair"
-                                    Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
-                            <TextBlock Text="Repairs the Windows image. Use if SFC fails to repair files."
-                                       VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Text.Faint}" />
-                        </StackPanel>
-                    </GroupBox>
-
-                    <!-- Network Reset -->
-                    <GroupBox Grid.Row="2" Header="Network Reset" Margin="0,0,0,12">
-                        <StackPanel Orientation="Horizontal" Margin="8,8,8,12">
-                            <Button x:Name="btn_SysFix_NetReset" Content="Reset Network"
-                                    Style="{StaticResource DangerButton}" Width="120" Height="28" />
-                            <TextBlock Text="Resets network settings (flushes DNS, resets IP, Winsock). May disconnect from network."
-                                       VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Text.Faint}" />
-                        </StackPanel>
-                    </GroupBox>
-
-                    <!-- Windows Update Reset -->
-                    <GroupBox Grid.Row="3" Header="Windows Update Reset" Margin="0,0,0,12">
-                        <StackPanel Orientation="Horizontal" Margin="8,8,8,12">
-                            <Button x:Name="btn_SysFix_WUReset" Content="Reset Windows Update"
-                                    Style="{StaticResource DangerButton}" Width="150" Height="28" />
-                            <Button x:Name="btn_SysFix_WUClear" Content="Clear Cache" Width="100" Height="28" Margin="8,0,0,0" />
-                            <TextBlock Text="Resets Windows Update components or clears the update cache."
-                                       VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Text.Faint}" />
-                        </StackPanel>
-                    </GroupBox>
-
-                    <TextBlock Grid.Row="4" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
-                               Text="These tools can help fix common Windows issues. Some operations may require administrator privileges and may temporarily disconnect you from the network." />
-                </Grid>
-            </TabItem>
-
-            <!-- ==================== DNS Changer ==================== -->
-            <TabItem x:Name="tab_DNS" ToolTip="Change DNS settings for network adapters">
+            <!-- ===================== Network ===================== -->
+            <TabItem x:Name="tab_Network" ToolTip="Network tools and diagnostics">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#x1F30E;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="DNS Changer" VerticalAlignment="Center" />
+                        <TextBlock Text="Network" VerticalAlignment="Center" />
                     </StackPanel>
                 </TabItem.Header>
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" MinHeight="100" />
-                    </Grid.RowDefinitions>
+                <TabControl Margin="0" Padding="0" BorderThickness="0">
+                    <!-- DNS Changer -->
+                    <TabItem x:Name="tab_DNS" ToolTip="Change DNS settings for network adapters">
+                        <TabItem.Header>
+                            <TextBlock Text="DNS Changer" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="100" />
+                            </Grid.RowDefinitions>
 
-                    <!-- Network adapter selection -->
-                    <Grid Grid.Row="0" Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Label   Grid.Column="0" Content="Network Adapter:" VerticalAlignment="Center" />
-                        <ComboBox x:Name="cmb_DNS_Adapter" Grid.Column="1" Margin="6,0" VerticalAlignment="Center" />
-                        <Button   x:Name="btn_DNS_Refresh" Grid.Column="2" Content="Refresh" Width="80" Height="28" Margin="12,0,0,0" />
-                    </Grid>
+                            <!-- Network adapter selection -->
+                            <Grid Grid.Row="0" Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Label   Grid.Column="0" Content="Network Adapter:" VerticalAlignment="Center" />
+                                <ComboBox x:Name="cmb_DNS_Adapter" Grid.Column="1" Margin="6,0" VerticalAlignment="Center" />
+                                <Button   x:Name="btn_DNS_Refresh" Grid.Column="2" Content="Refresh" Width="80" Height="28" Margin="12,0,0,0" />
+                            </Grid>
 
-                    <!-- DNS provider selection -->
-                    <GroupBox Grid.Row="1" Header="DNS Provider" Margin="0,0,0,12">
-                        <Grid Margin="8,8,8,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Label   Grid.Column="0" Content="Select Provider:" VerticalAlignment="Center" />
-                            <ComboBox x:Name="cmb_DNS_Provider" Grid.Column="1" Margin="6,0" VerticalAlignment="Center" />
+                            <!-- DNS provider selection -->
+                            <GroupBox Grid.Row="1" Header="DNS Provider" Margin="0,0,0,12">
+                                <Grid Margin="8,8,8,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Label   Grid.Column="0" Content="Select Provider:" VerticalAlignment="Center" />
+                                    <ComboBox x:Name="cmb_DNS_Provider" Grid.Column="1" Margin="6,0" VerticalAlignment="Center" />
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Current DNS settings -->
+                            <GroupBox Grid.Row="2" Header="Current DNS Settings" Margin="0,0,0,12">
+                                <Grid Margin="8,8,8,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Label   Grid.Column="0" Content="Primary:" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lbl_DNS_Primary" Grid.Column="1" Text="Not set" VerticalAlignment="Center" Margin="6,0" Foreground="{StaticResource Text.Muted}" />
+                                    <Label   Grid.Column="2" Content="Secondary:" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                    <TextBlock x:Name="lbl_DNS_Secondary" Grid.Column="3" Text="Not set" VerticalAlignment="Center" Margin="6,0" Foreground="{StaticResource Text.Muted}" />
+                                    <Label   Grid.Column="4" Content="Method:" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                    <TextBlock x:Name="lbl_DNS_Method" Grid.Column="5" Text="DHCP" VerticalAlignment="Center" Margin="6,0" Foreground="{StaticResource Text.Muted}" />
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Action buttons -->
+                            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,12">
+                                <Button x:Name="btn_DNS_Apply" Content="Apply DNS"
+                                        Style="{StaticResource PrimaryButton}" Width="100" Height="28" />
+                                <Button x:Name="btn_DNS_Reset" Content="Reset to DHCP"
+                                        Style="{StaticResource DangerButton}" Width="120" Height="28" Margin="8,0,0,0" />
+                                <Button x:Name="btn_DNS_Flush" Content="Flush DNS Cache" Width="120" Height="28" Margin="8,0,0,0" />
+                                <TextBlock x:Name="lbl_DNS_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="4" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="Change DNS settings for your network adapter. Select a provider and click Apply to set custom DNS servers, or Reset to DHCP to use automatic settings." />
                         </Grid>
-                    </GroupBox>
+                    </TabItem>
 
-                    <!-- Current DNS settings -->
-                    <GroupBox Grid.Row="2" Header="Current DNS Settings" Margin="0,0,0,12">
-                        <Grid Margin="8,8,8,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="120" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="120" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Label   Grid.Column="0" Content="Primary:" VerticalAlignment="Center" />
-                            <TextBlock x:Name="lbl_DNS_Primary" Grid.Column="1" Text="Not set" VerticalAlignment="Center" Margin="6,0" Foreground="{StaticResource Text.Muted}" />
-                            <Label   Grid.Column="2" Content="Secondary:" VerticalAlignment="Center" Margin="12,0,0,0" />
-                            <TextBlock x:Name="lbl_DNS_Secondary" Grid.Column="3" Text="Not set" VerticalAlignment="Center" Margin="6,0" Foreground="{StaticResource Text.Muted}" />
-                            <Label   Grid.Column="4" Content="Method:" VerticalAlignment="Center" Margin="12,0,0,0" />
-                            <TextBlock x:Name="lbl_DNS_Method" Grid.Column="5" Text="DHCP" VerticalAlignment="Center" Margin="6,0" Foreground="{StaticResource Text.Muted}" />
+                    <!-- Network Diagnostics -->
+                    <TabItem x:Name="tab_Diag" ToolTip="Local network diagnostics">
+                        <TabItem.Header>
+                            <TextBlock Text="Network Diagnostics" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="120" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Target row -->
+                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="60" />
+                                </Grid.ColumnDefinitions>
+                                <Label   Grid.Column="0" Content="Target host/IP:" VerticalAlignment="Center" />
+                                <TextBox x:Name="txt_Diag_Target" Grid.Column="1" Margin="6,0" VerticalAlignment="Center"
+                                         ToolTip="Needed for ping / tracert / nslookup. Not needed for ipconfig." />
+                                <Label   Grid.Column="2" Content="Ping count:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <TextBox x:Name="txt_Diag_PingCount" Grid.Column="3" Margin="6,0" Text="4" VerticalAlignment="Center" />
+                            </Grid>
+
+                            <!-- Checks row -->
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                                <CheckBox x:Name="chk_Diag_IPConfig" Content="ipconfig /all" VerticalAlignment="Center" />
+                                <CheckBox x:Name="chk_Diag_NSLookup" Content="nslookup" VerticalAlignment="Center" Margin="14,0,0,0" />
+                                <CheckBox x:Name="chk_Diag_Ping" Content="ping" IsChecked="True" VerticalAlignment="Center" Margin="14,0,0,0" />
+                                <CheckBox x:Name="chk_Diag_Tracert" Content="tracert (slow)" VerticalAlignment="Center" Margin="14,0,0,0" />
+                            </StackPanel>
+
+                            <!-- Action row -->
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="btn_Diag_Run"   Content="Run"
+                                        Style="{StaticResource PrimaryButton}" Width="90" Height="28" />
+                                <Button x:Name="btn_Diag_Stop"  Content="Stop" Width="70" Height="28" Margin="8,0,0,0" />
+                                <Button x:Name="btn_Diag_Clear" Content="Clear" Width="70" Height="28" Margin="8,0,0,0" />
+                                <Button x:Name="btn_Diag_Save"  Content="Save log..." Width="90" Height="28" Margin="8,0,0,0" />
+                                <TextBlock x:Name="lbl_Diag_Status" Text="Idle." VerticalAlignment="Center" Margin="14,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </StackPanel>
+
+                            <!-- Output console -->
+                            <TextBox x:Name="txt_Diag_Output" Grid.Row="3"
+                                     AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap"
+                                     VerticalContentAlignment="Top"
+                                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                     FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                                     Background="{StaticResource Console.Bg}" Foreground="{StaticResource Console.Fg}" />
                         </Grid>
-                    </GroupBox>
+                    </TabItem>
 
-                    <!-- Action buttons -->
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,12">
-                        <Button x:Name="btn_DNS_Apply" Content="Apply DNS"
-                                Style="{StaticResource PrimaryButton}" Width="100" Height="28" />
-                        <Button x:Name="btn_DNS_Reset" Content="Reset to DHCP"
-                                Style="{StaticResource DangerButton}" Width="120" Height="28" Margin="8,0,0,0" />
-                        <Button x:Name="btn_DNS_Flush" Content="Flush DNS Cache" Width="120" Height="28" Margin="8,0,0,0" />
-                        <TextBlock x:Name="lbl_DNS_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
-                    </StackPanel>
+                    <!-- COM Ports -->
+                    <TabItem x:Name="tab_COM" ToolTip="Watch serial/COM devices connect and disconnect">
+                        <TabItem.Header>
+                            <TextBlock Text="COM Ports" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="120" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="4" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
-                               Text="Change DNS settings for your network adapter. Select a provider and click Apply to set custom DNS servers, or Reset to DHCP to use automatic settings." />
-                </Grid>
+                            <!-- Controls -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="btn_COM_Start"   Content="Start monitoring"
+                                        Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
+                                <Button x:Name="btn_COM_Stop"    Content="Stop" Width="70" Height="28" Margin="8,0,0,0" />
+                                <Button x:Name="btn_COM_Refresh" Content="List now" Width="90" Height="28" Margin="8,0,0,0" />
+                                <CheckBox x:Name="chk_COM_Beep" Content="Beep on change" VerticalAlignment="Center" Margin="16,0,0,0" />
+                                <TextBlock x:Name="lbl_COM_Status" Text="Idle." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </StackPanel>
+
+                            <!-- Event/port grid -->
+                            <DataGrid x:Name="dgr_COM_Results" Grid.Row="1"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Time"         Binding="{Binding Time}"         Width="80" />
+                                    <DataGridTextColumn Header="Event"        Binding="{Binding Event}"        Width="80" />
+                                    <DataGridTextColumn Header="COM"          Binding="{Binding COM}"          Width="70" />
+                                    <DataGridTextColumn Header="Name"         Binding="{Binding Name}"         Width="2*" />
+                                    <DataGridTextColumn Header="Manufacturer" Binding="{Binding Manufacturer}" Width="*" />
+                                    <DataGridTextColumn Header="PNP device ID" Binding="{Binding PNPDeviceID}" Width="2*" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <TextBlock Grid.Row="2" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="Polls every 2s while monitoring. PRESENT = already connected at start; ADDED/REMOVED = changes since." />
+                        </Grid>
+                    </TabItem>
+                </TabControl>
             </TabItem>
 
-            <!-- ==================== Performance Plans ==================== -->
-            <TabItem x:Name="tab_Performance" ToolTip="Change Windows power plans">
+            <!-- ===================== Storage ===================== -->
+            <TabItem x:Name="tab_Storage" ToolTip="Storage management tools">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#x26A1;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Performance" VerticalAlignment="Center" />
+                        <TextBlock Text="&#x1F9F9;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Storage" VerticalAlignment="Center" />
                     </StackPanel>
                 </TabItem.Header>
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" MinHeight="100" />
-                    </Grid.RowDefinitions>
+                <TabControl Margin="0" Padding="0" BorderThickness="0">
+                    <!-- Storage Cleanup -->
+                    <TabItem x:Name="tab_FileCleanup" ToolTip="Find and remove files in a folder">
+                        <TabItem.Header>
+                            <TextBlock Text="Storage Cleanup" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="120" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                    <!-- Current plan -->
-                    <GroupBox Grid.Row="0" Header="Current Power Plan" Margin="0,0,0,12">
-                        <Grid Margin="8,8,8,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Label   Grid.Column="0" Content="Active Plan:" VerticalAlignment="Center" />
-                            <TextBlock x:Name="lbl_Perf_Current" Grid.Column="1" Text="Loading..." VerticalAlignment="Center" Margin="6,0" Foreground="{StaticResource Text.Muted}" />
+                            <!-- Folder row -->
+                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Label    Grid.Column="0" Content="Folder:" VerticalAlignment="Center" />
+                                <ComboBox x:Name="cmb_FC_Path" Grid.Column="1" Margin="6,0" IsEditable="True"
+                                          VerticalAlignment="Center" ToolTip="Pick a preset or type/paste a folder path" />
+                                <Button   x:Name="btn_FC_Browse" Grid.Column="2" Content="Browse..." Width="90" Height="26" />
+                            </Grid>
+
+                            <!-- Filter row -->
+                            <Grid Grid.Row="1" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="220" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Label   Grid.Column="0" Content="Name contains:" VerticalAlignment="Center" />
+                                <TextBox x:Name="txt_FC_Filter" Grid.Column="1" Margin="6,0" VerticalAlignment="Center"
+                                         ToolTip="Blank = every file. Plain text = name CONTAINS that text. Use * (any chars) or ? (one char) for explicit wildcards." />
+                                <CheckBox x:Name="chk_FC_Recurse" Grid.Column="2" Content="Include subfolders"
+                                          Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <CheckBox x:Name="chk_FC_Recycle" Grid.Column="3" Content="Send to Recycle Bin (recommended)"
+                                          Margin="16,0,0,0" VerticalAlignment="Center" IsChecked="True"
+                                          ToolTip="Checked: files go to the Recycle Bin (recoverable). Unchecked: permanent delete, no undo.&#10;Note: Windows still permanently deletes files on network shares, removable/USB drives, or any file larger than the Recycle Bin's size limit - even when this is checked." />
+                            </Grid>
+
+                            <!-- Matching-rules hint (always visible) -->
+                            <TextBlock Grid.Row="2" Margin="0,0,0,6" Foreground="{StaticResource Text.Faint}" TextWrapping="Wrap"
+                                       Text="Preview lists files in the folder above whose name matches 'Name contains' (blank = all; plain text = contains; * / ? = wildcards), searching subfolders only when 'Include subfolders' is ticked." />
+
+                            <!-- Action row -->
+                            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="btn_FC_Preview" Content="Preview"
+                                        Style="{StaticResource PrimaryButton}" Width="110" Height="28" />
+                                <Button x:Name="btn_FC_Delete"  Content="Delete listed"
+                                        Style="{StaticResource DangerButton}" Width="120" Height="28" Margin="8,0,0,0" />
+                                <TextBlock x:Name="lbl_FC_Count" Text="No preview yet."
+                                           VerticalAlignment="Center" Margin="14,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </StackPanel>
+
+                            <!-- Results grid -->
+                            <DataGrid x:Name="dgr_FC_Results" Grid.Row="4"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                                      HeadersVisibility="Column" SelectionMode="Extended">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="#"        Binding="{Binding nr}"       Width="40" />
+                                    <DataGridTextColumn Header="Name"     Binding="{Binding Name}"     Width="2*" />
+                                    <DataGridTextColumn Header="Size (KB)" Binding="{Binding SizeKB}"  Width="90" />
+                                    <DataGridTextColumn Header="Modified" Binding="{Binding Modified}" Width="150" />
+                                    <DataGridTextColumn Header="Full path" Binding="{Binding FullName}" Width="3*" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <TextBlock Grid.Row="5" Margin="0,8,0,0" Foreground="{StaticResource Danger}"
+                                       Text="Delete acts on exactly the files listed above. Preview first." />
                         </Grid>
-                    </GroupBox>
-
-                    <!-- Plan selection -->
-                    <GroupBox Grid.Row="1" Header="Select Power Plan" Margin="0,0,0,12">
-                        <Grid Margin="8,8,8,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Label   Grid.Column="0" Content="Plan:" VerticalAlignment="Center" />
-                            <ComboBox x:Name="cmb_Perf_Plan" Grid.Column="1" Margin="6,0" VerticalAlignment="Center" />
-                            <Button   x:Name="btn_Perf_Refresh" Grid.Column="2" Content="Refresh" Width="80" Height="28" Margin="12,0,0,0" />
-                        </Grid>
-                    </GroupBox>
-
-                    <!-- Action buttons -->
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
-                        <Button x:Name="btn_Perf_Apply" Content="Apply Plan"
-                                Style="{StaticResource PrimaryButton}" Width="100" Height="28" />
-                        <Button x:Name="btn_Perf_Ultimate" Content="Enable Ultimate Performance" Width="180" Height="28" Margin="8,0,0,0" />
-                        <TextBlock x:Name="lbl_Perf_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
-                    </StackPanel>
-
-                    <TextBlock Grid.Row="3" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
-                               Text="Change Windows power plans to optimize performance or power consumption. Ultimate Performance is hidden by default and provides maximum performance at the cost of higher power usage." />
-                </Grid>
+                    </TabItem>
+                </TabControl>
             </TabItem>
 
-            <!-- ==================== Windows Update ==================== -->
-            <TabItem x:Name="tab_WindowsUpdate" ToolTip="Control Windows Update settings">
+            <!-- ===================== Software ===================== -->
+            <TabItem x:Name="tab_Software" ToolTip="Software management">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#x1F4BE;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Windows Update" VerticalAlignment="Center" />
+                        <TextBlock Text="&#x1F4F6;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Software" VerticalAlignment="Center" />
                     </StackPanel>
                 </TabItem.Header>
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" MinHeight="100" />
-                    </Grid.RowDefinitions>
+                <TabControl Margin="0" Padding="0" BorderThickness="0">
+                    <!-- WinGet Apps -->
+                    <TabItem x:Name="tab_WinGet" ToolTip="Install and manage applications via WinGet">
+                        <TabItem.Header>
+                            <TextBlock Text="WinGet Apps" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="200" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                    <!-- Service status -->
-                    <GroupBox Grid.Row="0" Header="Windows Update Service" Margin="0,0,0,12">
-                        <Grid Margin="8,8,8,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="120" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="120" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Label   Grid.Column="0" Content="Status:" VerticalAlignment="Center" />
-                            <TextBlock x:Name="lbl_WU_Status" Grid.Column="1" Text="Loading..." VerticalAlignment="Center" Margin="6,0" Foreground="{StaticResource Text.Muted}" />
-                            <Label   Grid.Column="2" Content="Startup Type:" VerticalAlignment="Center" Margin="12,0,0,0" />
-                            <TextBlock x:Name="lbl_WU_Startup" Grid.Column="3" Text="Loading..." VerticalAlignment="Center" Margin="6,0" Foreground="{StaticResource Text.Muted}" />
-                            <Button   x:Name="btn_WU_Refresh" Grid.Column="4" Content="Refresh" Width="80" Height="28" Margin="12,0,0,0" />
+                            <!-- Search and filter row -->
+                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="140" />
+                                </Grid.ColumnDefinitions>
+                                <Label   Grid.Column="0" Content="Search:" VerticalAlignment="Center" />
+                                <TextBox x:Name="txt_WinGet_Search" Grid.Column="1" Margin="6,0" VerticalAlignment="Center"
+                                         ToolTip="Search available WinGet packages (Enter to search)" />
+                                <Label   Grid.Column="2" Content="Category:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <ComboBox x:Name="cmb_WinGet_Category" Grid.Column="3" Margin="6,0" VerticalAlignment="Center" />
+                            </Grid>
+
+                            <!-- Action buttons row -->
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="btn_WinGet_Search" Content="Search" Width="80" Height="28" />
+                                <Button x:Name="btn_WinGet_GetInstalled" Content="Get Installed" Width="100" Height="28" Margin="8,0,0,0" />
+                                <Button x:Name="btn_WinGet_Clear" Content="Clear" Width="70" Height="28" Margin="8,0,0,0" />
+                                <TextBlock x:Name="lbl_WinGet_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </StackPanel>
+
+                            <!-- App list grid -->
+                            <DataGrid x:Name="dgr_WinGet_Apps" Grid.Row="2"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                                      HeadersVisibility="Column" SelectionMode="Extended"
+                                      MaxHeight="300">
+                                <DataGrid.Columns>
+                                    <DataGridCheckBoxColumn Header="Select" Binding="{Binding Selected}" Width="50" />
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" IsReadOnly="True" />
+                                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="2*" IsReadOnly="True" />
+                                    <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="100" IsReadOnly="True" />
+                                    <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="120" IsReadOnly="True" />
+                                    <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="80" IsReadOnly="True" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Install/Uninstall buttons -->
+                            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button x:Name="btn_WinGet_Install" Content="Install Selected"
+                                        Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
+                                <Button x:Name="btn_WinGet_Update" Content="Update All" Width="100" Height="28" Margin="8,0,0,0" />
+                                <Button x:Name="btn_WinGet_Uninstall" Content="Uninstall Selected"
+                                        Style="{StaticResource DangerButton}" Width="140" Height="28" Margin="8,0,0,0" />
+                                <TextBlock Text="Requires WinGet to be installed on the system."
+                                           VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Faint}" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="4" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="WinGet is the Windows Package Manager. Install apps by selecting them and clicking 'Install Selected'. Use 'Get Installed' to see what's already on your system." />
                         </Grid>
-                    </GroupBox>
+                    </TabItem>
 
-                    <!-- Update mode -->
-                    <GroupBox Grid.Row="1" Header="Update Mode" Margin="0,0,0,12">
-                        <StackPanel Orientation="Horizontal" Margin="8,8,8,12">
-                            <Button x:Name="btn_WU_Manual" Content="Manual (Notify Only)"
-                                    Style="{StaticResource PrimaryButton}" Width="150" Height="28" />
-                            <Button x:Name="btn_WU_Auto" Content="Automatic"
-                                    Style="{StaticResource PrimaryButton}" Width="100" Height="28" Margin="8,0,0,0" />
-                            <Button x:Name="btn_WU_Disable" Content="Disable Updates"
-                                    Style="{StaticResource DangerButton}" Width="130" Height="28" Margin="8,0,0,0" />
-                            <TextBlock Text="Changes may require administrator privileges."
-                                       VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Faint}" />
-                        </StackPanel>
-                    </GroupBox>
+                    <!-- Various -->
+                    <TabItem x:Name="tab_SoftwareVarious" ToolTip="Various software tools">
+                        <TabItem.Header>
+                            <TextBlock Text="Various" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <TextBlock Text="Various software tools will be added here." 
+                                       Foreground="{StaticResource Text.Muted}" 
+                                       VerticalAlignment="Center" 
+                                       HorizontalAlignment="Center" />
+                        </Grid>
+                    </TabItem>
+                </TabControl>
+            </TabItem>
 
-                    <!-- Actions -->
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
-                        <Button x:Name="btn_WU_Check" Content="Check for Updates"
-                                Style="{StaticResource PrimaryButton}" Width="140" Height="28" />
-                        <Button x:Name="btn_WU_OpenSettings" Content="Open Settings" Width="120" Height="28" Margin="8,0,0,0" />
-                        <TextBlock x:Name="lbl_WU_ActionStatus" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
+            <!-- ===================== Tools ===================== -->
+            <TabItem x:Name="tab_Tools" ToolTip="Power tools and utilities">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#x1F4BB;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Tools" VerticalAlignment="Center" />
                     </StackPanel>
+                </TabItem.Header>
+                <TabControl Margin="0" Padding="0" BorderThickness="0">
+                    <!-- QR Code Generator -->
+                    <TabItem x:Name="tab_QRCode" ToolTip="Generate QR codes from text or URLs">
+                        <TabItem.Header>
+                            <TextBlock Text="QR Code" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="200" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="3" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
-                               Text="Control Windows Update behavior. Manual mode notifies you of updates but doesn't download/install automatically. Automatic mode downloads and installs updates automatically. Disable stops Windows Update entirely." />
-                </Grid>
+                            <!-- Text input row -->
+                            <Grid Grid.Row="0" Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="80" />
+                                </Grid.ColumnDefinitions>
+                                <Label   Grid.Column="0" Content="Text or URL:" VerticalAlignment="Center" />
+                                <TextBox x:Name="txt_QRCode_Text" Grid.Column="1" Margin="6,0" VerticalAlignment="Center"
+                                         ToolTip="Enter the text or URL to encode in the QR code" />
+                                <Label   Grid.Column="2" Content="Size:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <ComboBox x:Name="cmb_QRCode_Size" Grid.Column="3" Margin="6,0" VerticalAlignment="Center">
+                                    <ComboBoxItem Content="200" Tag="200" />
+                                    <ComboBoxItem Content="300" Tag="300" IsSelected="True" />
+                                    <ComboBoxItem Content="400" Tag="400" />
+                                    <ComboBoxItem Content="500" Tag="500" />
+                                </ComboBox>
+                            </Grid>
+
+                            <!-- Action buttons row -->
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+                                <Button x:Name="btn_QRCode_Generate" Content="Generate QR Code"
+                                        Style="{StaticResource PrimaryButton}" Width="140" Height="28" />
+                                <Button x:Name="btn_QRCode_Save" Content="Save Image..." Width="110" Height="28" Margin="8,0,0,0" />
+                                <Button x:Name="btn_QRCode_Open" Content="Open in Viewer" Width="120" Height="28" Margin="8,0,0,0" />
+                                <TextBlock x:Name="lbl_QRCode_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </StackPanel>
+
+                            <!-- QR Code display -->
+                            <Border Grid.Row="2" Background="{StaticResource Bg.Panel}"
+                                    BorderBrush="{StaticResource Border.Hair}" BorderThickness="1"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    Padding="20" Margin="0,0,0,12">
+                                <Image x:Name="img_QRCode" 
+                                       Width="300" Height="300"
+                                       Stretch="Uniform"
+                                       ToolTip="Generated QR code will appear here" />
+                            </Border>
+
+                            <TextBlock Grid.Row="3" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="Enter any text or URL above and click 'Generate QR Code' to create a scannable QR code. You can then save it as an image or open it in your default image viewer. Scan with any smartphone camera or QR code reader app." />
+                        </Grid>
+                    </TabItem>
+                </TabControl>
             </TabItem>
 
         </TabControl>

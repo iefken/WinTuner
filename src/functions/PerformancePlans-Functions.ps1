@@ -19,23 +19,17 @@ function Get-PowerPlans {
         $result = @()
         
         foreach ($line in $plans) {
-            if ($line -match "Power Scheme GUID: ([0-9a-f-]+)\s+\(([^)]+)\)\s+(.+)") {
+            if ($line -match "Power Scheme GUID: ([0-9a-f-]+)\s+\(([^)]+)\)") {
                 $guid = $matches[1]
                 $name = $matches[2]
-                $description = $matches[3].Trim()
                 
-                # Check if this is the active plan
-                $activePlan = powercfg -getactivescheme
-                if ($activePlan -match $guid) {
-                    $isActive = $true
-                } else {
-                    $isActive = $false
-                }
+                # Check if this is the active plan (marked with asterisk)
+                $isActive = $line -match "\*$"
                 
                 $result += [PSCustomObject]@{
                     Guid = $guid
                     Name = $name
-                    Description = $description
+                    Description = $name
                     IsActive = $isActive
                 }
             }

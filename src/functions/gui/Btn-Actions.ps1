@@ -1317,3 +1317,103 @@ Function Handle-btn_WU_OpenSettings {
         $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed to open settings: $errorMsg", 'Red')
     }
 }
+
+#========================================================================
+# QR Code Generator tab
+#========================================================================
+
+# Generates a QR code from the entered text/URL.
+Function Handle-btn_QRCode_Generate {
+    try {
+        $text = $global:txt_QRCode_Text.Text.Trim()
+        
+        if ([String]::IsNullOrWhiteSpace($text)) {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Please enter text or URL to generate QR code", 'Red')
+            $global:lbl_QRCode_Status.Text = "Enter text first"
+            return
+        }
+
+        # Get selected size from ComboBox
+        $sizeItem = $global:cmb_QRCode_Size.SelectedItem
+        $size = if ($sizeItem) { [int]$sizeItem.Tag } else { 300 }
+
+        $global:lbl_QRCode_Status.Text = "Generating..."
+        
+        # Generate QR code to temp file
+        $tempPath = Get-QRCodeTempPath
+        $success = New-QRCode -Text $text -OutputPath $tempPath -Size $size
+        
+        if ($success -and (Test-Path $tempPath)) {
+            # Load the image into the WPF Image control
+            $bitmap = [System.Windows.Media.Imaging.BitmapImage]::new()
+            $bitmap.BeginInit()
+            $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+            $bitmap.UriSource = [System.Uri]::new($tempPath)
+            $bitmap.EndInit()
+            $bitmap.Freeze()
+            
+            $global:img_QRCode.Source = $bitmap
+            $global:QRCodeCurrentPath = $tempPath
+            
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "QR code generated successfully", 'Green')
+            $global:lbl_QRCode_Status.Text = "Generated successfully"
+        } else {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed to generate QR code", 'Red')
+            $global:lbl_QRCode_Status.Text = "Generation failed"
+        }
+    }
+    catch {
+        $errorMsg = $_.Exception.Message
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "QR code generation error: $errorMsg", 'Red')
+        $global:lbl_QRCode_Status.Text = "Error occurred"
+    }
+}
+
+# Saves the current QR code image to a user-selected location.
+Function Handle-btn_QRCode_Save {
+    try {
+        if ([String]::IsNullOrEmpty($global:QRCodeCurrentPath) -or -not (Test-Path $global:QRCodeCurrentPath)) {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "No QR code to save - generate one first", 'Red')
+            $global:lbl_QRCode_Status.Text = "Generate QR code first"
+            return
+        }
+
+        $dialog = New-Object System.Windows.Forms.SaveFileDialog -Property @{
+            Title            = 'Save QR Code'
+            Filter           = 'PNG Image (*.png)|*.png|All Files (*.*)|*.*'
+            DefaultExt       = 'png'
+            InitialDirectory = $global:GUIHandler.InitialFolderPath
+        }
+
+        if ($dialog.ShowDialog() -eq 'OK') {
+            Copy-Item -Path $global:QRCodeCurrentPath -Destination $dialog.FileName -Force
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "QR code saved to $($dialog.FileName)", 'Green')
+            $global:lbl_QRCode_Status.Text = "Saved successfully"
+        }
+    }
+    catch {
+        $errorMsg = $_.Exception.Message
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed to save QR code: $errorMsg", 'Red')
+        $global:lbl_QRCode_Status.Text = "Save failed"
+    }
+}
+
+# Opens the current QR code image in the default image viewer.
+Function Handle-btn_QRCode_Open {
+    try {
+        if ([String]::IsNullOrEmpty($global:QRCodeCurrentPath) -or -not (Test-Path $global:QRCodeCurrentPath)) {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "No QR code to open - generate one first", 'Red')
+            $global:lbl_QRCode_Status.Text = "Generate QR code first"
+            return
+        }
+
+        Start-Process $global:QRCodeCurrentPath
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Opened QR code in default viewer", 'Green')
+        $global:lbl_QRCode_Status.Text = "Opened in viewer"
+    }
+    catch {
+        $errorMsg = $_.Exception.Message
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed to open QR code: $errorMsg", 'Red')
+        $global:lbl_QRCode_Status.Text = "Open failed"
+    }
+}
