@@ -514,10 +514,10 @@
                         <Rectangle Canvas.Left="18" Canvas.Top="36" Width="14" Height="14" Fill="White" RadiusX="2" RadiusY="2" />
                         <Rectangle Canvas.Left="36" Canvas.Top="36" Width="14" Height="14" Fill="White" RadiusX="2" RadiusY="2" />
                         <!-- Tuning indicator lines -->
-                        <Line Canvas.Left="34" Canvas.Top="10" X2="34" Y2="14" Stroke="White" StrokeThickness="2" StrokeLineCap="Round" />
-                        <Line Canvas.Left="34" Canvas.Top="54" X2="34" Y2="58" Stroke="White" StrokeThickness="2" StrokeLineCap="Round" />
-                        <Line Canvas.Left="10" Canvas.Top="34" X2="14" Y2="34" Stroke="White" StrokeThickness="2" StrokeLineCap="Round" />
-                        <Line Canvas.Left="54" Canvas.Top="34" X2="58" Y2="34" Stroke="White" StrokeThickness="2" StrokeLineCap="Round" />
+                        <Line Canvas.Left="34" Canvas.Top="10" X2="34" Y2="14" Stroke="White" StrokeThickness="2" />
+                        <Line Canvas.Left="34" Canvas.Top="54" X2="34" Y2="58" Stroke="White" StrokeThickness="2" />
+                        <Line Canvas.Left="10" Canvas.Top="34" X2="14" Y2="34" Stroke="White" StrokeThickness="2" />
+                        <Line Canvas.Left="54" Canvas.Top="34" X2="58" Y2="34" Stroke="White" StrokeThickness="2" />
                     </Canvas>
                 </Viewbox>
                 <StackPanel Margin="13,0,0,0" VerticalAlignment="Center">
