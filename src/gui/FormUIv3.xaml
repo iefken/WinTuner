@@ -1266,6 +1266,82 @@
                     </StackPanel>
                 </TabItem.Header>
                 <TabControl Margin="0" Padding="0" BorderThickness="0">
+                    <!-- Installed -->
+                    <TabItem x:Name="tab_SoftwareInstalled" ToolTip="View and manage installed software">
+                        <TabItem.Header>
+                            <TextBlock Text="Installed" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="200" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Search and filter row -->
+                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="120" />
+                                </Grid.ColumnDefinitions>
+                                <Label   Grid.Column="0" Content="Search:" VerticalAlignment="Center" />
+                                <TextBox x:Name="txt_Installed_Search" Grid.Column="1" Margin="6,0" VerticalAlignment="Center"
+                                         ToolTip="Search installed software" />
+                                <Label   Grid.Column="2" Content="Sort by:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <ComboBox x:Name="cmb_Installed_Sort" Grid.Column="3" Margin="6,0" VerticalAlignment="Center">
+                                    <ComboBoxItem Content="Name" Tag="Name" IsSelected="True" />
+                                    <ComboBoxItem Content="Size" Tag="Size" />
+                                    <ComboBoxItem Content="Date Installed" Tag="DateInstalled" />
+                                </ComboBox>
+                                <Label   Grid.Column="4" Content="Order:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <ComboBox x:Name="cmb_Installed_Order" Grid.Column="5" Margin="6,0" VerticalAlignment="Center">
+                                    <ComboBoxItem Content="Ascending" Tag="Asc" IsSelected="True" />
+                                    <ComboBoxItem Content="Descending" Tag="Desc" />
+                                </ComboBox>
+                            </Grid>
+
+                            <!-- Action buttons row -->
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="btn_Installed_Refresh" Content="Refresh List" Width="110" Height="28" />
+                                <Button x:Name="btn_Installed_Clear" Content="Clear" Width="70" Height="28" Margin="8,0,0,0" />
+                                <TextBlock x:Name="lbl_Installed_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </StackPanel>
+
+                            <!-- Installed software grid -->
+                            <DataGrid x:Name="dgr_Installed_Software" Grid.Row="2"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                                      HeadersVisibility="Column" SelectionMode="Extended"
+                                      MaxHeight="300">
+                                <DataGrid.Columns>
+                                    <DataGridCheckBoxColumn Header="Select" Binding="{Binding Selected}" Width="50" />
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" IsReadOnly="True" />
+                                    <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="100" IsReadOnly="True" />
+                                    <DataGridTextColumn Header="Publisher" Binding="{Binding Publisher}" Width="2*" IsReadOnly="True" />
+                                    <DataGridTextColumn Header="Size" Binding="{Binding Size}" Width="80" IsReadOnly="True" />
+                                    <DataGridTextColumn Header="Date Installed" Binding="{Binding InstallDate}" Width="120" IsReadOnly="True" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Uninstall button -->
+                            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button x:Name="btn_Installed_Uninstall" Content="Uninstall Selected"
+                                        Style="{StaticResource DangerButton}" Width="140" Height="28" />
+                                <TextBlock Text="Uninstalls selected software using Windows uninstaller."
+                                           VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Faint}" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="4" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="View all installed software on this system. Select items and click 'Uninstall Selected' to remove them. Sort by name, size, or installation date." />
+                        </Grid>
+                    </TabItem>
+
                     <!-- WinGet Apps -->
                     <TabItem x:Name="tab_WinGet" ToolTip="Install and manage applications via WinGet">
                         <TabItem.Header>
@@ -1332,19 +1408,6 @@
 
                             <TextBlock Grid.Row="4" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
                                        Text="WinGet is the Windows Package Manager. Install apps by selecting them and clicking 'Install Selected'. Use 'Get Installed' to see what's already on your system." />
-                        </Grid>
-                    </TabItem>
-
-                    <!-- Various -->
-                    <TabItem x:Name="tab_SoftwareVarious" ToolTip="Various software tools">
-                        <TabItem.Header>
-                            <TextBlock Text="Various" />
-                        </TabItem.Header>
-                        <Grid Margin="12">
-                            <TextBlock Text="Various software tools will be added here." 
-                                       Foreground="{StaticResource Text.Muted}" 
-                                       VerticalAlignment="Center" 
-                                       HorizontalAlignment="Center" />
                         </Grid>
                     </TabItem>
                 </TabControl>

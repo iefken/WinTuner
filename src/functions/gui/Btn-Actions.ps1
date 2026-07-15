@@ -846,6 +846,119 @@ Function Handle-btn_WinFeat_Disable {
 }
 
 #========================================================================
+# Installed Software tab
+#========================================================================
+
+# Refreshes the list of installed software.
+Function Handle-btn_Installed_Refresh {
+    try {
+        $global:lbl_Installed_Status.Text = "Loading software..."
+        
+        # Get all installed software
+        $software = Get-InstalledSoftware
+        
+        # Apply current filters
+        $searchTerm = $global:txt_Installed_Search.Text
+        $sortBy = if ($global:cmb_Installed_Sort.SelectedItem) { $global:cmb_Installed_Sort.SelectedItem.Tag } else { "Name" }
+        $order = if ($global:cmb_Installed_Order.SelectedItem) { $global:cmb_Installed_Order.SelectedItem.Tag } else { "Asc" }
+        
+        # Filter by search term
+        if (-not [String]::IsNullOrWhiteSpace($searchTerm)) {
+            $software = Find-InstalledSoftware -SoftwareList $software -SearchTerm $searchTerm
+        }
+        
+        # Sort the results
+        $software = $software | Sort-Object -Property $sortBy -Descending:($order -eq "Desc")
+        
+        # Convert to display format with checkbox
+        $displaySoftware = $software | ForEach-Object {
+            [PSCustomObject]@{
+                Selected = $false
+                Name = $_.Name
+                Version = $_.Version
+                Publisher = $_.Publisher
+                Size = $_.Size
+                InstallDate = $_.InstallDate
+                UninstallString = $_.UninstallString
+                QuietUninstallString = $_.QuietUninstallString
+            }
+        }
+        
+        $global:dgr_Installed_Software.ItemsSource = @($displaySoftware)
+        $global:lbl_Installed_Status.Text = "$($displaySoftware.Count) programs"
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Loaded $($displaySoftware.Count) installed programs", 'Green')
+    }
+    catch {
+        $global:lbl_Installed_Status.Text = "Failed to load"
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed to load installed software: $_", 'Red')
+    }
+}
+
+# Clears the search and software list.
+Function Handle-btn_Installed_Clear {
+    $global:dgr_Installed_Software.ItemsSource = @()
+    $global:txt_Installed_Search.Text = ""
+    $global:lbl_Installed_Status.Text = "Ready"
+}
+
+# Uninstalls selected software.
+Function Handle-btn_Installed_Uninstall {
+    $selectedSoftware = $global:dgr_Installed_Software.ItemsSource | Where-Object { $_.Selected -eq $true }
+    
+    if ($selectedSoftware.Count -eq 0) {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "No programs selected", 'Orange')
+        return
+    }
+    
+    $confirm = [System.Windows.Forms.MessageBox]::Show(
+        "Uninstall $($selectedSoftware.Count) selected program(s)?",
+        'Confirm uninstall', 'OKCancel', 'Warning')
+    if ($confirm -ne 'OK') {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Uninstall cancelled", 'Cyan')
+        return
+    }
+    
+    $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Uninstalling $($selectedSoftware.Count) program(s)...", 'Cyan')
+    
+    $successCount = 0
+    $failCount = 0
+    
+    foreach ($software in $selectedSoftware) {
+        try {
+            $uninstallString = $software.UninstallString
+            $quietUninstallString = $software.QuietUninstallString
+            
+            if ([String]::IsNullOrWhiteSpace($uninstallString) -and [String]::IsNullOrWhiteSpace($quietUninstallString)) {
+                $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "No uninstall string for: $($software.Name)", 'Red')
+                $failCount++
+                continue
+            }
+            
+            $success = Uninstall-Software -UninstallString $uninstallString -QuietUninstallString $quietUninstallString
+            if ($success) {
+                $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Uninstalled: $($software.Name)", 'Green')
+                $successCount++
+            } else {
+                $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed to uninstall: $($software.Name)", 'Red')
+                $failCount++
+            }
+        }
+        catch {
+            $errorMsg = $_.Exception.Message
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Error uninstalling $($software.Name): $errorMsg", 'Red')
+            $failCount++
+        }
+    }
+    
+    $color = if ($failCount -gt 0) { 'Yellow' } else { 'Green' }
+    $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Uninstall complete: $successCount succeeded, $failCount failed", $color)
+    $global:lbl_Installed_Status.Text = "Uninstall complete"
+    
+    # Refresh the list
+    Handle-btn_Installed_Refresh
+}
+
+#========================================================================
 # System Fixes
 #========================================================================
 

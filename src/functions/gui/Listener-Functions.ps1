@@ -155,6 +155,30 @@ Function Add_Click_listeners {
     })
 
     #--------------------------------------------------------------------
+    # Installed Software tab
+    #--------------------------------------------------------------------
+
+    $global:btn_Installed_Refresh.add_Click({ Handle-btn_Installed_Refresh })
+    $global:btn_Installed_Clear.add_Click({ Handle-btn_Installed_Clear })
+    $global:btn_Installed_Uninstall.add_Click({ Handle-btn_Installed_Uninstall })
+
+    # Enter in search box triggers refresh with filter
+    $global:txt_Installed_Search.Add_KeyDown({
+        if ($_.Key -eq 'Enter') {
+            $_.Handled = $true
+            Handle-btn_Installed_Refresh
+        }
+    })
+
+    # Sort/order dropdown changes trigger refresh
+    $global:cmb_Installed_Sort.Add_SelectionChanged({
+        Handle-btn_Installed_Refresh
+    })
+    $global:cmb_Installed_Order.Add_SelectionChanged({
+        Handle-btn_Installed_Refresh
+    })
+
+    #--------------------------------------------------------------------
     # Windows Features tab
     #--------------------------------------------------------------------
 
