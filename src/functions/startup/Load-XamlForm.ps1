@@ -36,11 +36,20 @@ catch {
 $iconPath = Join-Path $Global:ConfigFiles "wintuner.ico"
 if (Test-Path $iconPath) {
     try {
-        $icon = [System.Drawing.Icon]::ExtractAssociatedIcon($iconPath)
-        $Global:Form.Icon = $icon
+        # WPF's Window.Icon is an ImageSource — a System.Drawing.Icon won't cast.
+        # OnLoad caching + Freeze so the file isn't kept locked and the source is
+        # safe to reuse from any thread.
+        $iconImage = New-Object System.Windows.Media.Imaging.BitmapImage
+        $iconImage.BeginInit()
+        $iconImage.UriSource   = New-Object System.Uri (Resolve-Path -LiteralPath $iconPath).Path
+        $iconImage.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+        $iconImage.EndInit()
+        $iconImage.Freeze()
+
+        $Global:Form.Icon = $iconImage
     }
     catch {
-        Write-Host "Failed to load icon from: $iconPath" -ForegroundColor Yellow
+        Write-Host "Failed to load icon from: $iconPath - $($_.Exception.Message)" -ForegroundColor Yellow
     }
 }
 

@@ -28,6 +28,8 @@ class GUI_Handler {
         [GUI_Handler]::Prepare_DataGrids()
         [GUI_Handler]::Prepare_TextBoxes()
         [GUI_Handler]::Prepare_QuickLaunch()
+        [GUI_Handler]::Setup_VersionDisplay()
+        [GUI_Handler]::Setup_AboutButton()
 
         try {
             $global:Form.ShowDialog() | Out-Null
@@ -328,6 +330,85 @@ class GUI_Handler {
 
     static [void] Prepare_TextBoxes() {
         # Populated per-feature.
+    }
+
+    # [INIT] Sets up the version display in the header.
+    static [void] Setup_VersionDisplay() {
+        try {
+            if ($null -ne $global:txt_Version) {
+                $version = if ($Global:AppVersion) { "v$($Global:AppVersion)" } else { "v0.00" }
+                $global:txt_Version.Text = $version
+            }
+        }
+        catch {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Setup_VersionDisplay error: $_", 'Red')
+        }
+    }
+
+    # [INIT] Sets up the About button click handler.
+    static [void] Setup_AboutButton() {
+        try {
+            if ($null -ne $global:btn_About) {
+                $global:btn_About.add_Click({ param($s, $e)
+                    [GUI_Handler]::Show_AboutWindow()
+                })
+            }
+        }
+        catch {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Setup_AboutButton error: $_", 'Red')
+        }
+    }
+
+    # Shows the About modal window.
+    static [void] Show_AboutWindow() {
+        try {
+            $aboutXamlPath = "$Global:ConfigFiles\src\gui\AboutWindow.xaml"
+            if (-not (Test-Path $aboutXamlPath)) {
+                $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "AboutWindow.xaml not found at: $aboutXamlPath", 'Red')
+                return
+            }
+
+            $inputXML = Get-Content $aboutXamlPath -Raw
+            $inputXML = $inputXML -replace 'mc:Ignorable="d"', '' -replace 'x:N', 'N' -replace '^<Win.*', '<Window'
+            [xml]$XAML = $inputXML
+            $reader = New-Object System.Xml.XmlNodeReader $XAML
+            $aboutWindow = [Windows.Markup.XamlReader]::Load($reader)
+
+            # Set owner to center on main window
+            $aboutWindow.Owner = $global:Form
+
+            # Populate version info
+            $txt_Version = $aboutWindow.FindName('txt_Version')
+            if ($null -ne $txt_Version) {
+                $version = if ($Global:AppVersion) { $Global:AppVersion } else { "0.00" }
+                $txt_Version.Text = $version
+            }
+
+            # Populate PowerShell version
+            $txt_PowerShellVersion = $aboutWindow.FindName('txt_PowerShellVersion')
+            if ($null -ne $txt_PowerShellVersion) {
+                # NOTE: class methods can't see unqualified session variables —
+                # $PSVersionTable must be reached via the global scope or PS refuses to parse.
+                $psVersion = $global:PSVersionTable.PSVersion
+                $txt_PowerShellVersion.Text = "$psVersion"
+            }
+
+            # Wire up the Close button
+            $closeButton = $aboutWindow.FindName('btn_Close')
+            if ($null -ne $closeButton) {
+                # Scriptblocks created inside a class method don't capture the method's
+                # locals, so walk up from the sender instead of using $aboutWindow here.
+                $closeButton.add_Click({ param($s, $e)
+                    $win = [System.Windows.Window]::GetWindow($s)
+                    if ($null -ne $win) { $win.Close() }
+                })
+            }
+
+            $aboutWindow.ShowDialog() | Out-Null
+        }
+        catch {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Show_AboutWindow error: $_", 'Red')
+        }
     }
 
     # [INIT] Fills the "Common paths" / "Common apps" quick-launch lists.
