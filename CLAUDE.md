@@ -77,6 +77,20 @@ Notes:
   `Object[]`. Assign first, then wrap: `$x = Get-Content … | ConvertFrom-Json; $arr = @($x)`. (Piping into
   `ForEach-Object` enumerates fine — that's why the `pws_commands` load worked but the registry load didn't.)
 
+- **Class methods can't see session/automatic variables.** Inside a `class` method, an unqualified
+  `$PSVersionTable` / `$ErrorActionPreference` / any session variable is a **parse-time** failure —
+  `Variable is not assigned in the method` — so the whole app dies at load, not at call time. Reach them
+  through the global scope: `$global:PSVersionTable.PSVersion`. (`$env:...` and `$this` are fine.)
+
+- **Scriptblocks created inside a class method don't capture that method's locals.** A WPF event handler
+  wired up in a class method (`$btn.add_Click({ $myWindow.Close() })`) sees `$null`, and fails silently at
+  click time — there is no load-time warning. Get what you need from the event args instead
+  (`[System.Windows.Window]::GetWindow($s)`) or park it in a `$global:`.
+
+- **`Window.Icon` is a WPF `ImageSource`, not a `System.Drawing.Icon`.** `ExtractAssociatedIcon` output
+  won't cast — load the `.ico` into a `BitmapImage` with `CacheOption = OnLoad` (so the file isn't left
+  locked) and `Freeze()` it. See `src/functions/startup/Load-XamlForm.ps1`.
+
 ### Search → Preset → Command tab pattern
 
 The Local PS tab is the template for any future command-list tab. Three controls share a name stem
