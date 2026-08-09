@@ -551,7 +551,207 @@ Function Handle-btn_Diag_Save {
 
 #========================================================================
 # WinGet Application Manager
+#
+# Install/Update/Uninstall shell out to winget, which can take minutes for
+# a large package. They run in a background Start-Job; a DispatcherTimer
+# drains the job on the UI thread (same pattern as the Diagnostics tab) so
+# the window stays responsive. Search / Get Installed stay synchronous -
+# they are read-only and finish in a couple of seconds.
 #========================================================================
+
+# Controls disabled while a WinGet job is in flight - winget refuses
+# concurrent package operations, so overlapping clicks only produce noise.
+$global:WinGet_BusyControls = @(
+    'btn_WinGet_Install',
+    'btn_WinGet_Update',
+    'btn_WinGet_Uninstall',
+    'btn_WinGet_Search',
+    'btn_WinGet_GetInstalled'
+)
+
+# Enables/disables the WinGet buttons as a set.
+Function Set-WinGetControlsEnabled {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$Enabled
+    )
+
+    foreach ($name in $global:WinGet_BusyControls) {
+        try {
+            $ctrl = Get-Variable -Name $name -Scope Global -ValueOnly -ErrorAction SilentlyContinue
+            if ($ctrl) { $ctrl.IsEnabled = $Enabled }
+        }
+        catch {
+            # A missing control must never block the operation itself.
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Could not toggle ${name}: $($_.Exception.Message)", 'Red')
+        }
+    }
+}
+
+# Starts a background WinGet operation. Returns $true if the job started.
+Function Start-WinGetJob {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Install', 'Uninstall', 'Update')]
+        [string]$Operation,
+
+        [Parameter(Mandatory = $false)]
+        [string[]]$PackageIds = @()
+    )
+
+    if ($global:WinGet_Job -and $global:WinGet_Job.State -eq 'Running') {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "A WinGet operation is already running", 'Orange')
+        return $false
+    }
+
+    # Clean up any finished prior job
+    if ($global:WinGet_Job) {
+        Remove-Job -Job $global:WinGet_Job -Force -ErrorAction SilentlyContinue
+        $global:WinGet_Job = $null
+    }
+
+    # The job gets a fresh runspace, so it has to load the helpers itself.
+    $functionsPath = Join-Path $Global:ConfigFiles 'src\functions\WinGet-Functions.ps1'
+    if (-not (Test-Path -LiteralPath $functionsPath)) {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "WinGet-Functions.ps1 not found at $functionsPath", 'Red')
+        return $false
+    }
+
+    try {
+        $global:WinGet_Job = Start-Job -ScriptBlock {
+            param($FunctionsPath, $Operation, $PackageIds)
+
+            . $FunctionsPath
+
+            # Emits progress/result objects; the UI poller turns them into log lines.
+            switch ($Operation) {
+                'Update' {
+                    [PSCustomObject]@{ Kind = 'Progress'; PackageId = ''; Success = $null; Message = 'Upgrading all packages...' }
+                    try {
+                        $r = Update-WinGetApps -All
+                        [PSCustomObject]@{ Kind = 'Result'; PackageId = '(all packages)'; Success = $r.Success; Message = $r.Message }
+                    }
+                    catch {
+                        [PSCustomObject]@{ Kind = 'Result'; PackageId = '(all packages)'; Success = $false; Message = "Error: $($_.Exception.Message)" }
+                    }
+                }
+
+                default {
+                    foreach ($id in $PackageIds) {
+                        $verb = if ($Operation -eq 'Install') { 'Installing' } else { 'Uninstalling' }
+                        [PSCustomObject]@{ Kind = 'Progress'; PackageId = $id; Success = $null; Message = "$verb $id..." }
+
+                        try {
+                            if ($Operation -eq 'Install') {
+                                $r = Install-WinGetApp -PackageId $id -Silent
+                            }
+                            else {
+                                $r = Uninstall-WinGetApp -PackageId $id
+                            }
+                            [PSCustomObject]@{ Kind = 'Result'; PackageId = $id; Success = $r.Success; Message = $r.Message }
+                        }
+                        catch {
+                            # One bad package must not abort the rest of the batch.
+                            [PSCustomObject]@{ Kind = 'Result'; PackageId = $id; Success = $false; Message = "Error: $($_.Exception.Message)" }
+                        }
+                    }
+                }
+            }
+        } -ArgumentList $functionsPath, $Operation, $PackageIds
+    }
+    catch {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Could not start WinGet job: $($_.Exception.Message)", 'Red')
+        return $false
+    }
+
+    $global:WinGet_Operation = $Operation
+    Set-WinGetControlsEnabled -Enabled $false
+
+    if (-not $global:WinGet_Timer) {
+        $global:WinGet_Timer = New-Object System.Windows.Threading.DispatcherTimer
+        $global:WinGet_Timer.Interval = [TimeSpan]::FromMilliseconds(500)
+        $global:WinGet_Timer.add_Tick({ Handle-WinGet_Poll })
+    }
+    $global:WinGet_Timer.Start()
+
+    return $true
+}
+
+# Turns one job output item into an activity-log line.
+Function Write-WinGetJobItem {
+    param($Item)
+
+    if ($null -eq $Item) { return }
+
+    # Job output crosses a serialisation boundary, so treat anything that
+    # isn't one of our progress/result objects as plain text.
+    $kind = $null
+    try { $kind = $Item.Kind } catch { $kind = $null }
+
+    if ([String]::IsNullOrWhiteSpace($kind)) {
+        $text = ([string]$Item).Trim()
+        if (-not [String]::IsNullOrWhiteSpace($text)) {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, $text, 'Gray')
+        }
+        return
+    }
+
+    if ($kind -eq 'Progress') {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, [string]$Item.Message, 'Cyan')
+        $global:lbl_WinGet_Status.Text = [string]$Item.Message
+        return
+    }
+
+    if ($Item.Success -eq $true) {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "$($Item.PackageId): $($Item.Message)", 'Green')
+    }
+    else {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed: $($Item.PackageId) - $($Item.Message)", 'Red')
+    }
+}
+
+# Drains the running WinGet job; finalises and refreshes when it ends.
+Function Handle-WinGet_Poll {
+    if (-not $global:WinGet_Job) {
+        if ($global:WinGet_Timer) { $global:WinGet_Timer.Stop() }
+        Set-WinGetControlsEnabled -Enabled $true
+        return
+    }
+
+    foreach ($item in @(Receive-Job -Job $global:WinGet_Job -ErrorAction SilentlyContinue)) {
+        Write-WinGetJobItem -Item $item
+    }
+
+    if ($global:WinGet_Job.State -in @('Completed', 'Failed', 'Stopped')) {
+        # Final drain to catch anything buffered after the state flip
+        foreach ($item in @(Receive-Job -Job $global:WinGet_Job -ErrorAction SilentlyContinue)) {
+            Write-WinGetJobItem -Item $item
+        }
+
+        # Surface anything the job wrote to its error stream
+        try {
+            foreach ($jobError in @($global:WinGet_Job.ChildJobs[0].Error)) {
+                $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "WinGet job error: $jobError", 'Red')
+            }
+        }
+        catch { }
+
+        $state = $global:WinGet_Job.State
+        $operation = $global:WinGet_Operation
+
+        Remove-Job -Job $global:WinGet_Job -Force -ErrorAction SilentlyContinue
+        $global:WinGet_Job = $null
+        $global:WinGet_Timer.Stop()
+        Set-WinGetControlsEnabled -Enabled $true
+
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "WinGet $operation finished ($state)", 'Cyan')
+
+        # Refresh the grid so the result is visible, then report the outcome -
+        # the refresh sets its own status text, so it has to run first.
+        Handle-btn_WinGet_GetInstalled
+        $global:lbl_WinGet_Status.Text = "$operation $state"
+    }
+}
 
 # Searches WinGet for packages matching the search term.
 Function Handle-btn_WinGet_Search {
@@ -657,87 +857,95 @@ Function Handle-btn_WinGet_Clear {
 
 # Installs selected packages.
 Function Handle-btn_WinGet_Install {
-    $selectedApps = $global:dgr_WinGet_Apps.ItemsSource | Where-Object { $_.Selected -eq $true }
+    if (-not (Test-WinGetAvailable)) {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "WinGet is not available on this system", 'Red')
+        return
+    }
+
+    $selectedApps = @($global:dgr_WinGet_Apps.ItemsSource | Where-Object { $_.Selected -eq $true })
 
     if ($selectedApps.Count -eq 0) {
         $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "No packages selected", 'Orange')
         return
     }
 
-    $packageIds = $selectedApps | ForEach-Object { $_.Id }
+    $packageIds = @($selectedApps | ForEach-Object { $_.Id } | Where-Object { -not [String]::IsNullOrWhiteSpace($_) })
+    if ($packageIds.Count -eq 0) {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Selected rows have no package ID", 'Orange')
+        return
+    }
+
+    $global:lbl_WinGet_Status.Text = "Installing..."
     $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Installing $($packageIds.Count) packages...", 'Cyan')
 
-    try {
-        $results = Install-WinGetApps -PackageIds $packageIds -Silent
-
-        foreach ($result in $results) {
-            if ($result.Success) {
-                $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Installed: $($result.PackageId)", 'Green')
-            } else {
-                $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed: $($result.PackageId) - $($result.Message)", 'Red')
-            }
-        }
-
-        $global:lbl_WinGet_Status.Text = "Installation complete"
-        # Refresh the list
-        Handle-btn_WinGet_GetInstalled
-    }
-    catch {
-        $global:lbl_WinGet_Status.Text = "Installation failed"
-        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Installation failed: $_", 'Red')
+    # Runs in the background; Handle-WinGet_Poll logs results and refreshes the grid.
+    if (-not (Start-WinGetJob -Operation 'Install' -PackageIds $packageIds)) {
+        $global:lbl_WinGet_Status.Text = "Install not started"
     }
 }
 
 # Updates all installed packages.
 Function Handle-btn_WinGet_Update {
+    if (-not (Test-WinGetAvailable)) {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "WinGet is not available on this system", 'Red')
+        return
+    }
+
+    $global:lbl_WinGet_Status.Text = "Updating..."
     $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Updating all packages...", 'Cyan')
 
-    try {
-        $success = Update-WinGetApps -All
-        if ($success) {
-            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Update complete", 'Green')
-            $global:lbl_WinGet_Status.Text = "Update complete"
-            Handle-btn_WinGet_GetInstalled
-        } else {
-            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Update failed", 'Red')
-            $global:lbl_WinGet_Status.Text = "Update failed"
-        }
-    }
-    catch {
-        $global:lbl_WinGet_Status.Text = "Update failed"
-        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Update failed: $_", 'Red')
+    if (-not (Start-WinGetJob -Operation 'Update')) {
+        $global:lbl_WinGet_Status.Text = "Update not started"
     }
 }
 
 # Uninstalls selected packages.
 Function Handle-btn_WinGet_Uninstall {
-    $selectedApps = $global:dgr_WinGet_Apps.ItemsSource | Where-Object { $_.Selected -eq $true }
+    if (-not (Test-WinGetAvailable)) {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "WinGet is not available on this system", 'Red')
+        return
+    }
+
+    $selectedApps = @($global:dgr_WinGet_Apps.ItemsSource | Where-Object { $_.Selected -eq $true })
 
     if ($selectedApps.Count -eq 0) {
         $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "No packages selected", 'Orange')
         return
     }
 
-    $packageIds = $selectedApps | ForEach-Object { $_.Id }
-    $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Uninstalling $($packageIds.Count) packages...", 'Cyan')
-
-    foreach ($pkgId in $packageIds) {
-        try {
-            $success = Uninstall-WinGetApp -PackageId $pkgId
-            if ($success) {
-                $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Uninstalled: $pkgId", 'Green')
-            } else {
-                $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed to uninstall: $pkgId", 'Red')
-            }
-        }
-        catch {
-            $errorMsg = $_.Exception.Message
-            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Error uninstalling ${pkgId}: $errorMsg", 'Red')
-        }
+    $packageIds = @($selectedApps | ForEach-Object { $_.Id } | Where-Object { -not [String]::IsNullOrWhiteSpace($_) })
+    if ($packageIds.Count -eq 0) {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Selected rows have no package ID", 'Orange')
+        return
     }
 
-    $global:lbl_WinGet_Status.Text = "Uninstall complete"
-    Handle-btn_WinGet_GetInstalled
+    # Name the packages in the prompt - "3 selected" is easy to misread when
+    # the removal is silent and immediate.
+    $names = @($selectedApps |
+        Where-Object { -not [String]::IsNullOrWhiteSpace($_.Id) } |
+        ForEach-Object { if ([String]::IsNullOrWhiteSpace($_.Name)) { $_.Id } else { $_.Name } })
+
+    $shown = if ($names.Count -gt 10) {
+        (($names | Select-Object -First 10) -join "`n") + "`n... and $($names.Count - 10) more"
+    }
+    else {
+        $names -join "`n"
+    }
+
+    $confirm = [System.Windows.Forms.MessageBox]::Show(
+        "Uninstall $($packageIds.Count) package(s)?`n`n$shown",
+        'Confirm uninstall', 'OKCancel', 'Warning')
+    if ($confirm -ne 'OK') {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Uninstall cancelled", 'Cyan')
+        return
+    }
+
+    $global:lbl_WinGet_Status.Text = "Uninstalling..."
+    $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Uninstalling $($packageIds.Count) packages...", 'Cyan')
+
+    if (-not (Start-WinGetJob -Operation 'Uninstall' -PackageIds $packageIds)) {
+        $global:lbl_WinGet_Status.Text = "Uninstall not started"
+    }
 }
 
 #========================================================================

@@ -141,9 +141,32 @@ else                     { Add-Result "`$global:GUIHandler" "FAIL" "Variable is 
 
 Write-Step "Step 7 - GUI_Handler methods"
 
-@('Visual_Log', 'Get_Userdata', 'Launch_GUI', 'Format_RichTextBox', 'Get_PS_Command_By_Description') | ForEach-Object {
+@('Visual_Log', 'Get_Userdata', 'Launch_GUI', 'Format_RichTextBox', 'To_ConsoleColor',
+  'Get_PS_Command_By_Description') | ForEach-Object {
     if ([GUI_Handler].GetMethods().Name -contains $_) { Add-Result "GUI_Handler.$_" "PASS" }
     else                                              { Add-Result "GUI_Handler.$_" "FAIL" "Method not found" }
+}
+
+# Every log colour must map to a real ConsoleColor - 'Orange' is a valid WPF
+# brush but not a ConsoleColor, and Write-Host throws on it.
+$consoleColors = [System.Enum]::GetNames([System.ConsoleColor])
+$badColor = @('Orange', 'Red', 'Green', 'Cyan', 'Gray', 'Yellow', '', 'NotAColour') |
+    Where-Object { $consoleColors -notcontains $global:GUIHandler.To_ConsoleColor($_) }
+if (-not $badColor) { Add-Result "Log colours map to valid ConsoleColors" "PASS" }
+else { Add-Result "Log colours map to valid ConsoleColors" "FAIL" "unmapped: $($badColor -join ', ')" }
+
+# Visual_Log with the console echo on must not throw, whatever the colour.
+try {
+    $echoWasOn = $global:cbx_GetFeedbackMessages.IsChecked
+    $global:cbx_GetFeedbackMessages.IsChecked = $true
+    $global:GUIHandler.Visual_Log($env:COMPUTERNAME, 'startup test - colour probe', 'Orange')
+    $global:GUIHandler.Visual_Log($env:COMPUTERNAME, 'startup test - colour probe', 'NotAColour')
+    $global:cbx_GetFeedbackMessages.IsChecked = $echoWasOn
+    Add-Result "Visual_Log survives non-console colours with echo on" "PASS"
+}
+catch {
+    $global:cbx_GetFeedbackMessages.IsChecked = $false
+    Add-Result "Visual_Log survives non-console colours with echo on" "FAIL" $_.Exception.Message
 }
 
 #========================================================================
@@ -298,6 +321,195 @@ try {
 }
 catch {
     Add-Result "Diagnostics job round-trip" "FAIL" $_.Exception.Message
+}
+
+#========================================================================
+# Step 13 - WinGet feature (controls, functions, table parser, live CLI)
+#
+# The parser checks are the regression guard for the Name/Id column swap
+# that made every install target a display name instead of a package ID.
+# Nothing here installs, upgrades or removes anything.
+#========================================================================
+
+Write-Step "Step 13 - WinGet feature"
+
+@('txt_WinGet_Search', 'cmb_WinGet_Category', 'btn_WinGet_Search', 'btn_WinGet_GetInstalled',
+  'btn_WinGet_Clear', 'dgr_WinGet_Apps', 'btn_WinGet_Install', 'btn_WinGet_Update',
+  'btn_WinGet_Uninstall', 'lbl_WinGet_Status') | ForEach-Object {
+    $ctrl = Get-Variable -Name $_ -Scope Global -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $ctrl) { Add-Result "Control: `$$_" "PASS" }
+    else                 { Add-Result "Control: `$$_" "FAIL" "Not exposed by Load-XamlForm.ps1" }
+}
+
+@('Invoke-WinGet', 'ConvertFrom-WinGetTable', 'Get-WinGetExitMessage', 'Get-WinGetFailureText',
+  'Get-WinGetApps', 'Search-WinGetApps', 'Install-WinGetApp', 'Install-WinGetApps',
+  'Update-WinGetApps', 'Uninstall-WinGetApp', 'Test-WinGetAvailable') | ForEach-Object {
+    if (Get-Command $_ -ErrorAction SilentlyContinue) { Add-Result "Function: $_" "PASS" }
+    else                                              { Add-Result "Function: $_" "FAIL" "Not loaded" }
+}
+
+@('Handle-btn_WinGet_Search', 'Handle-btn_WinGet_GetInstalled', 'Handle-btn_WinGet_Clear',
+  'Handle-btn_WinGet_Install', 'Handle-btn_WinGet_Update', 'Handle-btn_WinGet_Uninstall',
+  'Start-WinGetJob', 'Handle-WinGet_Poll', 'Write-WinGetJobItem', 'Set-WinGetControlsEnabled') | ForEach-Object {
+    if (Get-Command $_ -ErrorAction SilentlyContinue) { Add-Result "Function: $_" "PASS" }
+    else                                              { Add-Result "Function: $_" "FAIL" "Not loaded" }
+}
+
+# applications.json prefill (drives the category filter)
+if ($global:WinGetAppsList -and @($global:WinGetAppsList).Count -gt 1) {
+    Add-Result "applications.json presets loaded ($(@($global:WinGetAppsList).Count))" "PASS"
+}
+else {
+    Add-Result "applications.json presets" "FAIL" "list empty or collapsed to one element"
+}
+
+#--- Table parser: 5-column search output (Name Id Version Match Source) ---
+try {
+    $fmt    = '{0,-30}{1,-31}{2,-11}{3,-25}{4}'
+    $sample = @(
+        ($fmt -f 'Name', 'Id', 'Version', 'Match', 'Source'),
+        ('-' * 100),
+        ($fmt -f 'Notepad++',     'Notepad++.Notepad++',        '8.9.7', 'Tag: notepad', 'winget'),
+        ($fmt -f 'NoteTab Light', 'FookesHolding.NoteTabLight', '7.2',   'Tag: notepad', 'winget')
+    )
+    $parsed = @(ConvertFrom-WinGetTable -Lines $sample)
+
+    if ($parsed.Count -ne 2) {
+        Add-Result "Parser: search table row count" "FAIL" "got $($parsed.Count), expected 2"
+    }
+    else {
+        Add-Result "Parser: search table row count" "PASS"
+
+        # The bug: Name and Id were read from swapped columns.
+        if ($parsed[0].Name -eq 'Notepad++' -and $parsed[0].Id -eq 'Notepad++.Notepad++') {
+            Add-Result "Parser: Name/Id not swapped" "PASS"
+        }
+        else {
+            Add-Result "Parser: Name/Id not swapped" "FAIL" "Name='$($parsed[0].Name)' Id='$($parsed[0].Id)'"
+        }
+
+        # Names containing spaces used to be shredded by the token regex.
+        if ($parsed[1].Name -eq 'NoteTab Light') { Add-Result "Parser: name with spaces" "PASS" }
+        else { Add-Result "Parser: name with spaces" "FAIL" "got '$($parsed[1].Name)'" }
+
+        # Source used to pick up the Match column and read 'Tag:'.
+        if ($parsed[0].Source -eq 'winget') { Add-Result "Parser: Source column" "PASS" }
+        else { Add-Result "Parser: Source column" "FAIL" "got '$($parsed[0].Source)'" }
+    }
+}
+catch {
+    Add-Result "Parser: search table" "FAIL" $_.Exception.Message
+}
+
+#--- Table parser: 4-column search output (winget drops Match on exact hits) ---
+try {
+    $fmt4   = '{0,-30}{1,-31}{2,-11}{3}'
+    $sample = @(
+        ($fmt4 -f 'Name', 'Id', 'Version', 'Source'),
+        ('-' * 85),
+        ($fmt4 -f 'Notepad++', 'Notepad++.Notepad++', '8.9.7', 'winget')
+    )
+    $parsed = @(ConvertFrom-WinGetTable -Lines $sample)
+    if ($parsed.Count -eq 1 -and $parsed[0].Source -eq 'winget' -and $parsed[0].Id -eq 'Notepad++.Notepad++') {
+        Add-Result "Parser: search table without Match column" "PASS"
+    }
+    else {
+        Add-Result "Parser: search table without Match column" "FAIL" "Id='$($parsed[0].Id)' Source='$($parsed[0].Source)'"
+    }
+}
+catch {
+    Add-Result "Parser: search table without Match column" "FAIL" $_.Exception.Message
+}
+
+#--- Table parser: list output with empty trailing columns ---
+try {
+    $fmtL   = '{0,-28}{1,-62}{2,-14}{3,-12}{4}'
+    $sample = @(
+        ($fmtL -f 'Name', 'Id', 'Version', 'Available', 'Source'),
+        ('-' * 130),
+        ($fmtL -f 'App Installer', 'Microsoft.AppInstaller', '1.29.280.0', '', 'winget'),
+        ($fmtL -f '3D Viewer',     'MSIX\Microsoft.Microsoft3DViewer_1.0.125.0_x64__8wekyb3d8bbwe', '1.0.125.0', '', '')
+    )
+    $parsed = @(ConvertFrom-WinGetTable -Lines $sample)
+    # The old regex required a Source token and silently dropped source-less rows.
+    if ($parsed.Count -eq 2) { Add-Result "Parser: list rows without a Source" "PASS" }
+    else { Add-Result "Parser: list rows without a Source" "FAIL" "got $($parsed.Count), expected 2" }
+}
+catch {
+    Add-Result "Parser: list rows without a Source" "FAIL" $_.Exception.Message
+}
+
+#--- Exit-code mapper ---
+if ((Get-WinGetExitMessage -ExitCode -1978335230) -match 'Invalid command line') {
+    Add-Result "Exit code 0x8A150002 mapped" "PASS"
+}
+else {
+    Add-Result "Exit code 0x8A150002 mapped" "FAIL" "unexpected text"
+}
+
+#--- Live winget checks (read-only; nothing is installed or removed) ---
+if (-not (Test-WinGetAvailable)) {
+    Add-Result "winget CLI present" "WARN" "winget not on PATH - live checks skipped"
+}
+else {
+    Add-Result "winget CLI present" "PASS"
+
+    # Real search must come back with correctly separated Name/Id
+    try {
+        $hits = @(Search-WinGetApps -Query 'notepad')
+        $npp  = $hits | Where-Object { $_.Id -eq 'Notepad++.Notepad++' } | Select-Object -First 1
+        if ($npp -and $npp.Name -eq 'Notepad++') {
+            Add-Result "Live search returns usable IDs ($($hits.Count) hits)" "PASS"
+        }
+        elseif ($hits.Count -gt 0) {
+            Add-Result "Live search returns usable IDs" "WARN" "$($hits.Count) hits but Notepad++ not among them"
+        }
+        else {
+            Add-Result "Live search returns usable IDs" "FAIL" "no results parsed"
+        }
+    }
+    catch {
+        Add-Result "Live search" "FAIL" $_.Exception.Message
+    }
+
+    # A search with no matches is an empty result, not an exception
+    try {
+        $none = @(Search-WinGetApps -Query 'zzqq-no-such-package-zzqq')
+        if ($none.Count -eq 0) { Add-Result "Empty search result is not an error" "PASS" }
+        else { Add-Result "Empty search result is not an error" "WARN" "got $($none.Count) hits" }
+    }
+    catch {
+        Add-Result "Empty search result is not an error" "FAIL" $_.Exception.Message
+    }
+
+    # Installed list must parse (count varies per machine)
+    try {
+        $installed = @(Get-WinGetApps)
+        if ($installed.Count -gt 0) { Add-Result "Live installed list parsed ($($installed.Count) packages)" "PASS" }
+        else { Add-Result "Live installed list parsed" "WARN" "no rows parsed" }
+    }
+    catch {
+        Add-Result "Live installed list" "FAIL" $_.Exception.Message
+    }
+
+    # Regression guard for the mutually exclusive --silent/--interactive pair:
+    # winget must reject this on "package not found" (0x8A150014), never on
+    # "invalid arguments" (0x8A150002). Nothing gets installed - the ID is fake.
+    try {
+        $probe = Install-WinGetApp -PackageId '__wintuner_probe_no_such_package__' -Silent
+        if ($probe.ExitCode -eq -1978335230) {
+            Add-Result "Install arguments accepted by winget" "FAIL" "winget rejected the argument list: $($probe.Message)"
+        }
+        elseif ($probe.Success) {
+            Add-Result "Install arguments accepted by winget" "WARN" "probe package unexpectedly installed"
+        }
+        else {
+            Add-Result "Install arguments accepted by winget" "PASS" "rejected on lookup, not on args"
+        }
+    }
+    catch {
+        Add-Result "Install arguments accepted by winget" "FAIL" $_.Exception.Message
+    }
 }
 
 #========================================================================
