@@ -85,6 +85,11 @@ Bootstrap + shared infra + first features are in place and pass `Test-DevStartup
   `Get-HardwareSummary -Sections` keeps the two lower grids from listing the same facts twice while the
   text report still gets everything.
 
+  The three tables are separated by `GridSplitter`s (`RowSplitter` style) so their heights are draggable.
+  The GPU row stays `Auto` — it starts exactly as tall as the adapters it holds, and a drag replaces that
+  with an explicit height anyway; the two lower rows are star-sized with `MinHeight`, so growing one shrinks
+  its neighbour instead of pushing the footer off the tab.
+
 Remaining phases (repo comparer, storage rewrite) follow the proven donor layout — build into this shape
 unless we explicitly decide to diverge.
 

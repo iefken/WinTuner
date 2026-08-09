@@ -476,6 +476,26 @@
             <Setter Property="Background" Value="{StaticResource Border.Hair}" />
         </Style>
 
+        <!-- Horizontal drag handle between stacked panels. Thin at rest, amber
+             under the cursor so it reads as grabbable. -->
+        <Style x:Key="RowSplitter" TargetType="GridSplitter">
+            <Setter Property="Height"              Value="4" />
+            <Setter Property="Margin"              Value="0,2,0,2" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment"   Value="Center" />
+            <Setter Property="ResizeDirection"     Value="Rows" />
+            <Setter Property="ResizeBehavior"      Value="PreviousAndNext" />
+            <Setter Property="ShowsPreview"        Value="True" />
+            <Setter Property="Background"          Value="{StaticResource Border.Hair}" />
+            <Setter Property="Focusable"           Value="False" />
+            <Setter Property="ToolTip"             Value="Drag to resize the tables above and below" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource Accent}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <!-- ===== Slim dark ScrollBar ===== -->
         <Style x:Key="SbThumb" TargetType="Thumb">
             <Setter Property="OverridesDefaultStyle" Value="True" />
@@ -1501,14 +1521,20 @@
                             <TextBlock Text="Hardware Info" />
                         </TabItem.Header>
                         <Grid Margin="12">
-                            <!-- The GPU box is Auto (1-3 rows). The two detail grids split
-                                 what is left evenly and scroll internally, so expanding a
-                                 CPU/memory row can never push the rest off the tab. -->
+                            <!-- A GridSplitter sits between the tables, so dragging a handle
+                                 grows one table and shrinks its neighbour rather than pushing
+                                 the footer off the tab. The GPU row stays Auto so it starts
+                                 exactly as tall as the adapters it holds - a splitter drag
+                                 replaces that with an explicit height anyway. The two lower
+                                 weights are only starting proportions; MinHeight stops a drag
+                                 from collapsing a grid to nothing. -->
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" MinHeight="60" />
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*"    MinHeight="90" />
-                                <RowDefinition Height="1.3*" MinHeight="90" />
+                                <RowDefinition Height="*"    MinHeight="70" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="1.3*" MinHeight="70" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
@@ -1522,12 +1548,12 @@
                             </StackPanel>
 
                             <!-- Graphics adapters -->
-                            <GroupBox Grid.Row="1" Header="Graphics adapters" Margin="0,0,0,8"
+                            <GroupBox Grid.Row="1" Header="Graphics adapters"
                                       ToolTip="VRAM comes from the display driver's own registry key, so cards larger than 4 GB report their true size (WMI's AdapterRAM is a UInt32 and caps at ~4095 MB). Integrated GPUs share system memory and may report their fallback allocation instead.">
                                 <DataGrid x:Name="dgr_HW_Gpu" Margin="4"
                                           AutoGenerateColumns="False" IsReadOnly="True"
                                           CanUserAddRows="False" GridLinesVisibility="Horizontal"
-                                          HeadersVisibility="Column" MaxHeight="120">
+                                          HeadersVisibility="Column">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Adapter"     Binding="{Binding Name}"       Width="2*" />
                                         <DataGridTextColumn Header="VRAM"        Binding="{Binding VRAM}"       Width="90" />
@@ -1540,8 +1566,10 @@
                                 </DataGrid>
                             </GroupBox>
 
+                            <GridSplitter Grid.Row="2" Style="{StaticResource RowSplitter}" />
+
                             <!-- CPU + memory, with matching items collapsed into one row -->
-                            <GroupBox Grid.Row="2" Header="CPU &amp; memory" Margin="0,0,0,8"
+                            <GroupBox Grid.Row="3" Header="CPU &amp; memory"
                                       ToolTip="Identical processors and memory modules are shown as a single row. Click the caret to list them individually.">
                                 <DataGrid x:Name="dgr_HW_CpuMem" Margin="4"
                                           AutoGenerateColumns="False" IsReadOnly="True"
@@ -1564,8 +1592,10 @@
                                 </DataGrid>
                             </GroupBox>
 
+                            <GridSplitter Grid.Row="4" Style="{StaticResource RowSplitter}" />
+
                             <!-- Board / BIOS / machine details -->
-                            <GroupBox Grid.Row="3" Header="System details">
+                            <GroupBox Grid.Row="5" Header="System details">
                                 <DataGrid x:Name="dgr_HW_Details" Margin="4"
                                           AutoGenerateColumns="False" IsReadOnly="True"
                                           CanUserAddRows="False" GridLinesVisibility="Horizontal"
@@ -1578,8 +1608,8 @@
                                 </DataGrid>
                             </GroupBox>
 
-                            <TextBlock Grid.Row="4" Margin="0,6,0,0" Foreground="{StaticResource Text.Faint}"
-                                       Text="Read-only scan of this machine. Nothing here changes any setting." />
+                            <TextBlock Grid.Row="6" Margin="0,6,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="Read-only scan of this machine. Nothing here changes any setting. Drag the dividers to resize the tables." />
                         </Grid>
                     </TabItem>
 
