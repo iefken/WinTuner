@@ -278,12 +278,19 @@ It runs in two places, both through the same `Start-UpdateCheck` / `Handle-Updat
   (`btn_CheckUpdates` → `Handle-btn_CheckUpdates`, wired in `Add_Click_listeners`). The button is disabled
   while a check is in flight and a second click is refused rather than queued.
 
-- **Use the GitHub contents API, not `raw.githubusercontent.com`.** Raw is served with
-  `Cache-Control: max-age=300` and GitHub normalises the query string away, so cache-busting does nothing:
-  for five minutes after a release the raw copy still returns the *previous* version, and someone who just
-  updated is told they are "ahead of published". Measured, not assumed. The API answers immediately; its
-  60 requests/hour unauthenticated limit is untouchable for a once-per-launch check, and it needs a
-  `User-Agent` header or it returns 403.
+- **Use the GitHub contents API, not `raw.githubusercontent.com`.** *Both* endpoints are cached, but by
+  very different amounts — headers measured, not assumed:
+
+  | Endpoint | `Cache-Control` | Stale window |
+  |----------|-----------------|--------------|
+  | `raw.githubusercontent.com` | `max-age=300` | 5 minutes |
+  | `api.github.com/…/contents` | `max-age=60` | 1 minute |
+
+  GitHub normalises the query string away on raw, so cache-busting does not work there either. **Neither is
+  instant** — check within a minute of a release and you may still be told the previous version is current;
+  a second check a moment later is right. Raw's five-minute window is the one that actually misleads: it
+  tells someone who just updated that they are "ahead of published". The API costs a 60 requests/hour
+  unauthenticated limit, unreachable for a once-per-launch check, and needs a `User-Agent` header or it 403s.
 - `Get-RemoteAppVersion` parses **both** shapes — the API's base64 `.content` wrapper and a plain raw file —
   so an `ini.json` left over from an older install that still points at raw keeps working. Strip the UTF-8
   BOM from the decoded text first, or `ConvertFrom-Json` fails with a misleading "invalid JSON primitive".

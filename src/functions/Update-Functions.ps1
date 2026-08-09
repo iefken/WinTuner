@@ -10,12 +10,17 @@
 # pattern as the Diagnostics and WinGet tabs: a slow or unreachable
 # network must never delay the window appearing.
 #
-# It reads the GitHub contents API, NOT raw.githubusercontent.com. Raw is
-# served with Cache-Control: max-age=300 and GitHub normalises the query
-# string away, so cache-busting does not work: for five minutes after a
-# release the raw copy still reports the previous version. Measured, not
-# assumed. The API answers immediately at the cost of a 60 requests/hour
-# unauthenticated limit, which a once-per-launch check will never reach.
+# It reads the GitHub contents API, NOT raw.githubusercontent.com. Both
+# are cached, but by very different amounts (headers measured, not assumed):
+#
+#   raw.githubusercontent.com  Cache-Control: max-age=300   -> 5 min stale
+#   api.github.com/.../contents  Cache-Control: max-age=60  -> 1 min stale
+#
+# GitHub normalises the query string away on raw, so cache-busting does not
+# work there either. Neither endpoint is instant: check within a minute of
+# a release and you may still be told the previous version is current. A
+# second check a moment later gets it right. The API costs a 60 requests/
+# hour unauthenticated limit, which a once-per-launch check cannot reach.
 #========================================================================
 
 # Used when ini.json carries no UpdateCheckUrl (older installs).
