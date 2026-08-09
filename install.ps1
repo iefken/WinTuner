@@ -48,6 +48,20 @@ if (-not (Test-Path $installDir)) {
     Write-Host "Created installation directory" -ForegroundColor Green
 }
 
+#------------------------------------------------------------------------
+# Shared install rules
+#
+# $excluded  - names never copied out of the source (repo plumbing and
+#              local run artefacts). In a git worktree '.git' is a FILE,
+#              not a folder, so match on name rather than type.
+# $protected - top-level names in the install that pruning must never
+#              touch. 'logs' holds the user's saved diagnostics and
+#              hardware reports; it does not exist in the source, so
+#              without this it would be deleted on every install.
+#------------------------------------------------------------------------
+$excluded  = @('.git', '.gitignore', '.claude', '.github', 'logs')
+$protected = @('logs')
+
 if ($Local) {
     #--------------------------------------------------------------------
     # Install from this working copy - no network, no git state involved.
@@ -74,26 +88,6 @@ if ($Local) {
         Write-Error "No Main.ps1 in $sourceDir - this does not look like the WinTuner repo."
         exit 1
     }
-
-    # Repo plumbing and local run artefacts have no business in the install.
-    # NOTE: in a git worktree '.git' is a file, not a folder - match by name.
-    $excluded = @('.git', '.gitignore', '.claude', '.github', 'logs')
-
-    Write-Host "Copying files..." -ForegroundColor Cyan
-    try {
-        $copied = 0
-        Get-ChildItem -LiteralPath $sourceDir -Force |
-            Where-Object { $excluded -notcontains $_.Name } |
-            ForEach-Object {
-                Copy-Item -LiteralPath $_.FullName -Destination $installDir -Recurse -Force
-                $copied++
-            }
-        Write-Host "Copied $copied top-level item(s)" -ForegroundColor Green
-    }
-    catch {
-        Write-Error "Failed to copy the working copy: $_"
-        exit 1
-    }
 }
 else {
     #--------------------------------------------------------------------
@@ -118,25 +112,98 @@ else {
         exit 1
     }
 
-    # Extract the archive
+    # Extract the archive. The copy + prune below needs the extracted tree,
+    # so the temp cleanup happens after that, not here.
     Write-Host "Extracting files..." -ForegroundColor Cyan
     try {
         Expand-Archive -Path $tempZip -DestinationPath $env:TEMP -Force
-
-        # Copy files to installation directory
-        Copy-Item -Path "$extractedDir\*" -Destination $installDir -Recurse -Force
-        Write-Host "Files extracted successfully" -ForegroundColor Green
+        Write-Host "Extracted" -ForegroundColor Green
     }
     catch {
         Write-Error "Failed to extract files: $_"
+        Remove-Item $tempZip -ErrorAction SilentlyContinue
         exit 1
     }
-    finally {
-        # Cleanup
-        Remove-Item $tempZip -ErrorAction SilentlyContinue
-        Remove-Item $extractedDir -Recurse -Force -ErrorAction SilentlyContinue
-    }
+
+    $sourceDir  = $extractedDir
+    $cleanupZip = $tempZip
 }
+
+#------------------------------------------------------------------------
+# Copy source -> install
+#------------------------------------------------------------------------
+Write-Host "Copying files..." -ForegroundColor Cyan
+try {
+    $copied = 0
+    Get-ChildItem -LiteralPath $sourceDir -Force |
+        Where-Object { $excluded -notcontains $_.Name } |
+        ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $installDir -Recurse -Force
+            $copied++
+        }
+    Write-Host "Copied $copied top-level item(s)" -ForegroundColor Green
+}
+catch {
+    Write-Error "Failed to copy files: $_"
+    exit 1
+}
+
+#------------------------------------------------------------------------
+# Prune files that no longer exist in the source
+#
+# Copy-Item overwrites but never deletes, so a file renamed or removed in
+# the repo used to linger in the install forever - and a stale .ps1 still
+# gets dot-sourced by Import-Functions, so orphans are not harmless.
+#------------------------------------------------------------------------
+Write-Host "Removing files no longer in the source..." -ForegroundColor Cyan
+try {
+    # Sanity check: only ever prune something that looks like a WinTuner install.
+    if (-not (Test-Path (Join-Path $installDir 'Main.ps1'))) {
+        throw "No Main.ps1 in $installDir after copying - refusing to prune."
+    }
+
+    # Every relative path the install is supposed to contain.
+    $expected = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($top in (Get-ChildItem -LiteralPath $sourceDir -Force | Where-Object { $excluded -notcontains $_.Name })) {
+        $null = $expected.Add($top.Name)
+        if ($top.PSIsContainer) {
+            foreach ($child in (Get-ChildItem -LiteralPath $top.FullName -Recurse -Force)) {
+                $null = $expected.Add($child.FullName.Substring($sourceDir.Length).TrimStart('\'))
+            }
+        }
+    }
+
+    # Walk the install deepest-first so children go before their parents.
+    $removed = 0
+    $candidates = Get-ChildItem -LiteralPath $installDir -Recurse -Force |
+                  Sort-Object { $_.FullName.Length } -Descending
+
+    foreach ($item in $candidates) {
+        # A parent may already have taken this one with it.
+        if (-not (Test-Path -LiteralPath $item.FullName)) { continue }
+
+        $rel     = $item.FullName.Substring($installDir.Length).TrimStart('\')
+        $topName = ($rel -split '\\')[0]
+
+        if ($protected -contains $topName) { continue }
+        if ($expected.Contains($rel))      { continue }
+
+        Remove-Item -LiteralPath $item.FullName -Recurse -Force -ErrorAction Stop
+        Write-Host "  removed $rel" -ForegroundColor DarkYellow
+        $removed++
+    }
+
+    if ($removed -gt 0) { Write-Host "Removed $removed orphaned item(s)" -ForegroundColor Green }
+    else                { Write-Host "Nothing to remove" -ForegroundColor Green }
+}
+catch {
+    # A failed prune leaves a working (if untidy) install - do not abort.
+    Write-Warning "Could not finish pruning: $_"
+}
+
+# Temp artefacts from the download path
+if ($cleanupZip)   { Remove-Item $cleanupZip -ErrorAction SilentlyContinue }
+if (-not $Local -and $sourceDir) { Remove-Item $sourceDir -Recurse -Force -ErrorAction SilentlyContinue }
 
 # Create a desktop shortcut (optional)
 $desktopPath = [Environment]::GetFolderPath("Desktop")

@@ -262,8 +262,18 @@ you will spend an afternoon wondering why your fix "did nothing".
 Use it to test a change in the installed app before pushing. Both modes print the installed `AppVersion`
 at the end, so a stale install is obvious.
 
-Neither mode deletes anything — files removed from the repo linger in the install directory forever. Wipe
-`%USERPROFILE%\WinTuner` by hand if a rename ever leaves an orphan behind.
+**Both modes prune.** After copying, anything in the install directory that no longer exists in the source
+is deleted, and each removal is printed. `Copy-Item` overwrites but never deletes, so before this a file
+renamed or removed in the repo lingered forever — and a stale `.ps1` under `src/functions/` still gets
+dot-sourced by `Import-Functions`, so orphans were not harmless.
+
+- **`logs` is protected** and never pruned. It holds saved diagnostics and hardware reports, and it does
+  not exist in the source, so without the exception every install would wipe it.
+- The same exclusion list (`.git`, `.gitignore`, `.claude`, `.github`, `logs`) drives both the copy and the
+  prune, so the two can't disagree about what belongs in an install.
+- Pruning walks deepest-first so children are removed before their parents, and refuses to run at all if
+  `Main.ps1` is missing after the copy — a guard against ever pointing it at the wrong folder.
+- A failed prune warns but does not abort: an untidy install still works.
 
 ### Update check
 
