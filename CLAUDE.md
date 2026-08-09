@@ -23,7 +23,7 @@ ask before adapting. When in doubt, prefer the local equivalent (e.g. operate on
 
 ## Current state
 
-Bootstrap + shared infra + first features are in place and pass `Test-DevStartup.ps1` (111/111):
+Bootstrap + shared infra + first features are in place and pass `Test-DevStartup.ps1` (158/158):
 
 - **Phase 0/1 (done):** `Main.ps1` → `src/functions/Config.ps1` → `Load-XamlForm.ps1` + `Import-Functions.ps1`;
   `GUI_Handler` class (`Visual_Log`, `Get_Userdata`, path helpers); `Helper-Functions.ps1`; minimal WPF shell
@@ -61,12 +61,19 @@ Bootstrap + shared infra + first features are in place and pass `Test-DevStartup
   (Save → timestamped file under `logs\diagnostics\`). All in `gui/Btn-Actions.ps1`. (Rewritten, not ported:
   the donor was a parallel `Workflow` dumping per-host files.)
 
+- **WinGet Apps tab (fixed):** search / list / install / update / uninstall via the `winget` CLI.
+  All winget calls go through `Invoke-WinGet` in `src/functions/WinGet-Functions.ps1` (captures output +
+  exit code, no console window). Install/Update/Uninstall run in a background `Start-Job` +
+  `DispatcherTimer` (same pattern as Diagnostics) and disable the tab's buttons while in flight; Search and
+  Get Installed stay synchronous. Covered by Step 13 of `Test-DevStartup.ps1`.
+
 - **Hardware Info (done):** **Tools → Hardware Info** tab — read-only local inventory. Top grid lists display
   adapters (VRAM, vendor, driver + date, current mode); bottom grid is a flat Category/Item/Value dump of CPU,
   memory modules and motherboard/BIOS. Buttons: Scan Hardware / Copy to Clipboard / Save Report (timestamped
   file under `logs\hardware\`). Scanning is **manual** — nothing runs at startup. Logic lives in
   `src/functions/Hardware-Functions.ps1` (`Get-GpuInfo`, `Get-CpuInfo`, `Get-MemoryInfo`, `Get-SystemHardware`,
-  `Get-HardwareSummary`, `Format-HardwareReport`), all callable from the Local PS REPL too.
+  `Get-HardwareSummary`, `Format-HardwareReport`), all callable from the Local PS REPL too. Covered by
+  Step 14 of `Test-DevStartup.ps1`.
 
 Remaining phases (repo comparer, storage rewrite) follow the proven donor layout — build into this shape
 unless we explicitly decide to diverge.
@@ -81,6 +88,25 @@ Notes:
   a no-op that always returned "UTF8".
 - `registry_tweaks.json` schema is a **redesign** of the donor's flat `key/val/key1..key4` CSV into clean
   per-tweak `entries[]` (`name`/`type`/`value`).
+
+## winget CLI gotchas (these bit us — every install failed)
+
+- **Column order is `Name  Id  Version  [Match|Available]  Source`.** Reading Name/Id the other way round
+  makes the app pass a *display name* to `winget install`, which then reports "No package found". Always
+  install with `--id <id> --exact`.
+- **Never parse winget's table with a token regex.** Names contain spaces (`NoteTab Light`) and trailing
+  columns are frequently empty (`winget list` rows with no Source), so a `(\S+)\s+(\S+)…` pattern both
+  mangles and silently drops rows. `ConvertFrom-WinGetTable` derives column offsets from the header line
+  above the dashed separator and slices on those. The `Match` column disappears on exact hits, so the
+  column count varies — key off the header, not a fixed position.
+- **`--silent` and `--interactive` are mutually exclusive.** Passing both aborts with `0x8A150002`
+  ("More than one execution behavior argument provided") before winget does any work.
+- **Non-zero doesn't always mean failure.** `0x8A15002B` is "no newer version available" — a no-op, not an
+  error. Codes to know: `0x8A150002` invalid args, `0x8A150014` no package found, `0x8A15002B` up to date.
+- **winget writes its error text to stdout, not stderr.** So capture stdout and skip `2>&1` — redirecting a
+  native command's stderr in PS 5.1 wraps each line in a `NativeCommandError` that throws under
+  `$ErrorActionPreference = 'Stop'`.
+- Pass `--disable-interactivity` from the GUI so winget can never sit waiting on a prompt nobody can see.
 
 ## PowerShell 5.1 gotchas (carry-over — these bit us)
 
@@ -179,6 +205,12 @@ Paired `.csv` / `.json` data files (loaded at startup) drive the dropdowns/REPL 
 - In WPF event scriptblocks without `param($sender, $e)`, `$sender` is `$null` — reference controls by their
   explicit global variable name.
 - Check a method exists without an instance: `[ClassName].GetMethods().Name -contains 'MethodName'`.
+- **WPF brush names are a superset of `ConsoleColor`.** `Visual_Log` colours are brush names, so `'Orange'`
+  paints the RichTextBox fine but `Write-Host -ForegroundColor Orange` throws — which used to kill the
+  calling event handler whenever "Echo to console" was ticked. `GUI_Handler.To_ConsoleColor()` maps brush
+  names onto real console colours (unknown → `Gray`). Likewise an unrecognised brush name makes
+  `ApplyPropertyValue` throw "Token is not valid" — both paths are now caught. Logging must never be able
+  to take down the caller.
 - **`Register-WmiEvent`/`Register-ObjectEvent -Action` callbacks don't fire while the main thread is blocked
   in `Form.ShowDialog()`.** For any "watch for changes" feature, poll with a
   `System.Windows.Threading.DispatcherTimer` instead — its `Tick` runs on the UI thread during the modal

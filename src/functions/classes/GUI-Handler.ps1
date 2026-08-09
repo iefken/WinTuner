@@ -723,8 +723,41 @@ class GUI_Handler {
 
         if ($global:cbx_GetFeedbackMessages -and $global:cbx_GetFeedbackMessages.IsChecked -eq $true) {
             $dateNow = Get-Date -Format 'HH:mm:ss'
-            Write-Host "$dateNow | $line" -ForegroundColor $Color
+            # Never let the console echo take the app down - it is a debug aid.
+            try {
+                Write-Host "$dateNow | $line" -ForegroundColor $this.To_ConsoleColor($Color)
+            }
+            catch {
+                Write-Host "$dateNow | $line"
+            }
         }
+    }
+
+    # Maps a WPF brush name onto a valid ConsoleColor.
+    #
+    # The log colours are WPF brush names, which are a superset of ConsoleColor -
+    # 'Orange' renders fine in the RichTextBox but makes `Write-Host
+    # -ForegroundColor Orange` throw, taking the whole click handler with it.
+    [String] To_ConsoleColor([String] $Color) {
+        if ([String]::IsNullOrEmpty($Color)) { return 'Gray' }
+
+        # A name that is already a ConsoleColor passes straight through.
+        foreach ($name in [System.Enum]::GetNames([System.ConsoleColor])) {
+            if ($name -eq $Color) { return $name }
+        }
+
+        # Nearest console equivalent for the brush names this app uses.
+        switch ($Color) {
+            'Orange'    { return 'Yellow' }
+            'Gold'      { return 'Yellow' }
+            'OrangeRed' { return 'Red'    }
+            'Crimson'   { return 'Red'    }
+            'Lime'      { return 'Green'  }
+            'Silver'    { return 'Gray'   }
+            'LightGray' { return 'Gray'   }
+        }
+
+        return 'Gray'
     }
 
     # Appends coloured, timestamped text to a WPF RichTextBox.
@@ -736,7 +769,21 @@ class GUI_Handler {
         $range.Text = if ($NewLine) { "`n[$systemTime] - $Text" } else { "[$systemTime] - $Text" }
 
         if ([String]::IsNullOrEmpty($ForeGroundColor)) { $ForeGroundColor = 'Black' }
-        $range.ApplyPropertyValue([System.Windows.Documents.TextElement]::ForegroundProperty, $ForeGroundColor)
+
+        # An unrecognised brush name makes ApplyPropertyValue throw
+        # ("Token is not valid"), which would kill the calling event handler.
+        # Logging must never be able to do that - fall back to the default.
+        try {
+            $range.ApplyPropertyValue([System.Windows.Documents.TextElement]::ForegroundProperty, $ForeGroundColor)
+        }
+        catch {
+            try {
+                $range.ApplyPropertyValue([System.Windows.Documents.TextElement]::ForegroundProperty, 'Gray')
+            }
+            catch {
+                # Text is already in the box; colouring it is best-effort.
+            }
+        }
 
         $RichTextBoxControl.ScrollToEnd()
     }
