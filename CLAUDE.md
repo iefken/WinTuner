@@ -268,8 +268,15 @@ Neither mode deletes anything — files removed from the repo linger in the inst
 ### Update check
 
 `src/functions/Update-Functions.ps1` reads `AppVersion` from the published `ini.json`
-(`IniFile.UpdateCheckUrl`) and compares it with the running version, reporting into the Activity log at
-startup. It only ever *reports* — updating stays a deliberate `install.ps1` run.
+(`IniFile.UpdateCheckUrl`) and compares it with the running version, reporting into the Activity log. It
+only ever *reports* — updating stays a deliberate `install.ps1` run.
+
+It runs in two places, both through the same `Start-UpdateCheck` / `Handle-UpdateCheck_Poll` pair:
+
+- **At startup**, from `Launch_GUI` just before `ShowDialog`.
+- **On demand**, via the **Check for updates** button in the header next to the version
+  (`btn_CheckUpdates` → `Handle-btn_CheckUpdates`, wired in `Add_Click_listeners`). The button is disabled
+  while a check is in flight and a second click is refused rather than queued.
 
 - **Use the GitHub contents API, not `raw.githubusercontent.com`.** Raw is served with
   `Cache-Control: max-age=300` and GitHub normalises the query string away, so cache-busting does nothing:

@@ -9,6 +9,13 @@
 Function Add_Click_listeners {
 
     #--------------------------------------------------------------------
+    # Header (version / update check)
+    #--------------------------------------------------------------------
+
+    # Same check the app runs at startup, on demand.
+    $global:btn_CheckUpdates.add_Click({ Handle-btn_CheckUpdates })
+
+    #--------------------------------------------------------------------
     # This machine (general info)
     #--------------------------------------------------------------------
 

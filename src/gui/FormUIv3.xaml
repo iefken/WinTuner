@@ -586,12 +586,17 @@
                     </StackPanel>
                 </StackPanel>
                 
-                <!-- Version and About button on the right -->
+                <!-- Version, update check and About button on the right -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">
                     <TextBlock x:Name="txt_Version" FontFamily="Bahnschrift"
-                               FontSize="11" Foreground="{StaticResource Text.Muted}" 
+                               FontSize="11" Foreground="{StaticResource Text.Muted}"
                                VerticalAlignment="Center" Margin="0,0,12,0" />
-                    <Button x:Name="btn_About" Content="ℹ" 
+                    <Button x:Name="btn_CheckUpdates" Content="Check for updates"
+                            Height="24" Padding="10,0"
+                            FontSize="11" FontFamily="Bahnschrift"
+                            ToolTip="Ask GitHub whether a newer WinTuner has been published"
+                            VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Button x:Name="btn_About" Content="ℹ"
                             Width="28" Height="24" Padding="0"
                             FontSize="14" FontFamily="Segoe UI"
                             ToolTip="About WinTuner"

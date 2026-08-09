@@ -626,9 +626,47 @@ catch {
 
 Write-Step "Step 15 - Update check"
 
-@('Compare-AppVersion', 'Get-RemoteAppVersion', 'Start-UpdateCheck', 'Handle-UpdateCheck_Poll') | ForEach-Object {
+@('Compare-AppVersion', 'Get-RemoteAppVersion', 'Start-UpdateCheck', 'Handle-UpdateCheck_Poll',
+  'Handle-btn_CheckUpdates', 'Set-UpdateCheckButtonEnabled') | ForEach-Object {
     if (Get-Command $_ -ErrorAction SilentlyContinue) { Add-Result "Function: $_" "PASS" }
     else                                              { Add-Result "Function: $_" "FAIL" "Not loaded" }
+}
+
+# Header "Check for updates" button
+$btnUpdate = Get-Variable -Name 'btn_CheckUpdates' -Scope Global -ValueOnly -ErrorAction SilentlyContinue
+if ($null -ne $btnUpdate) { Add-Result "Control: `$btn_CheckUpdates" "PASS" $btnUpdate.Content }
+else                      { Add-Result "Control: `$btn_CheckUpdates" "FAIL" "Not exposed by Load-XamlForm.ps1" }
+
+# A control with no handler looks perfectly fine and does nothing, so assert
+# the Click event actually has a subscriber. Add_Click_listeners ran when
+# Listener-Functions.ps1 was dot-sourced.
+if ($null -ne $btnUpdate) {
+    $wired = $false
+    try {
+        $clickEvent = [System.Windows.Controls.Primitives.ButtonBase]::ClickEvent
+        $storeProp  = $btnUpdate.GetType().GetProperty('EventHandlersStore',
+                        [System.Reflection.BindingFlags]'Instance,NonPublic')
+        $store      = $storeProp.GetValue($btnUpdate)
+        $wired      = ($null -ne $store) -and (@($store.GetRoutedEventHandlers($clickEvent)).Count -gt 0)
+    }
+    catch { $wired = $false }
+
+    if ($wired) { Add-Result "btn_CheckUpdates Click handler wired" "PASS" }
+    else        { Add-Result "btn_CheckUpdates Click handler wired" "FAIL" "no Click handler attached" }
+}
+
+# The check must still run at startup, not only from the button.
+try {
+    $handlerSrc = Get-Content (Join-Path $Global:ConfigFiles 'src\functions\classes\GUI-Handler.ps1') -Raw
+    if ($handlerSrc -match '(?s)\[void\]\s*Launch_GUI\(\).*?Start-UpdateCheck.*?ShowDialog') {
+        Add-Result "Update check runs at startup (Launch_GUI)" "PASS" "called before ShowDialog"
+    }
+    else {
+        Add-Result "Update check runs at startup (Launch_GUI)" "FAIL" "Start-UpdateCheck not called before ShowDialog"
+    }
+}
+catch {
+    Add-Result "Update check runs at startup (Launch_GUI)" "FAIL" $_.Exception.Message
 }
 
 # ini.json should carry the check URL (code falls back, but config is the contract)

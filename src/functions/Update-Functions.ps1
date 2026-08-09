@@ -149,6 +149,52 @@ function Get-RemoteAppVersion {
 }
 
 #========================================================================
+# Header button state
+#========================================================================
+function Set-UpdateCheckButtonEnabled {
+    <#
+    .SYNOPSIS
+        Enables/disables the header "Check for updates" button.
+    .DESCRIPTION
+        Tolerates the button not existing - the check also runs at startup
+        and must never fail over a missing control.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$Enabled
+    )
+
+    try {
+        if ($global:btn_CheckUpdates) { $global:btn_CheckUpdates.IsEnabled = $Enabled }
+    }
+    catch {
+        # Cosmetic only - never let this break the check itself.
+    }
+}
+
+#========================================================================
+# Manual check (header button)
+#========================================================================
+function Handle-btn_CheckUpdates {
+    <#
+    .SYNOPSIS
+        Runs the same check the app performs at startup, on demand.
+    #>
+    if ($global:UpdateCheck_Job -and $global:UpdateCheck_Job.State -eq 'Running') {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Update check already running", 'Gray')
+        return
+    }
+
+    # Immediate feedback; the verdict follows a moment later via the poller.
+    $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Checking for updates...", 'Cyan')
+
+    if (-not (Start-UpdateCheck)) {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Could not start the update check", 'Red')
+        Set-UpdateCheckButtonEnabled -Enabled $true
+    }
+}
+
+#========================================================================
 # Background check
 #========================================================================
 function Start-UpdateCheck {
@@ -204,6 +250,9 @@ function Start-UpdateCheck {
         return $false
     }
 
+    # No double-clicking while a check is in flight.
+    Set-UpdateCheckButtonEnabled -Enabled $false
+
     if (-not $global:UpdateCheck_Timer) {
         $global:UpdateCheck_Timer = New-Object System.Windows.Threading.DispatcherTimer
         $global:UpdateCheck_Timer.Interval = [TimeSpan]::FromMilliseconds(500)
@@ -224,6 +273,7 @@ function Handle-UpdateCheck_Poll {
     #>
     if (-not $global:UpdateCheck_Job) {
         if ($global:UpdateCheck_Timer) { $global:UpdateCheck_Timer.Stop() }
+        Set-UpdateCheckButtonEnabled -Enabled $true
         return
     }
 
@@ -241,6 +291,10 @@ function Handle-UpdateCheck_Poll {
     Remove-Job -Job $global:UpdateCheck_Job -Force -ErrorAction SilentlyContinue
     $global:UpdateCheck_Job = $null
     $global:UpdateCheck_Timer.Stop()
+
+    # Re-enable before reporting, so an early return below cannot leave the
+    # button stuck disabled.
+    Set-UpdateCheckButtonEnabled -Enabled $true
 
     $localVersion = if ($Global:AppVersion) { [string]$Global:AppVersion } else { '' }
 
