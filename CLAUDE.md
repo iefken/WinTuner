@@ -23,7 +23,7 @@ ask before adapting. When in doubt, prefer the local equivalent (e.g. operate on
 
 ## Current state
 
-Bootstrap + shared infra + first features are in place and pass `Test-DevStartup.ps1` (87/87):
+Bootstrap + shared infra + first features are in place and pass `Test-DevStartup.ps1` (158/158):
 
 - **Phase 0/1 (done):** `Main.ps1` → `src/functions/Config.ps1` → `Load-XamlForm.ps1` + `Import-Functions.ps1`;
   `GUI_Handler` class (`Visual_Log`, `Get_Userdata`, path helpers); `Helper-Functions.ps1`; minimal WPF shell
@@ -67,10 +67,23 @@ Bootstrap + shared infra + first features are in place and pass `Test-DevStartup
   `DispatcherTimer` (same pattern as Diagnostics) and disable the tab's buttons while in flight; Search and
   Get Installed stay synchronous. Covered by Step 13 of `Test-DevStartup.ps1`.
 
+- **Hardware Info (done):** **Tools → Hardware Info** tab — read-only local inventory. Top grid lists display
+  adapters (VRAM, vendor, driver + date, current mode); bottom grid is a flat Category/Item/Value dump of CPU,
+  memory modules and motherboard/BIOS. Buttons: Scan Hardware / Copy to Clipboard / Save Report (timestamped
+  file under `logs\hardware\`). Scanning is **manual** — nothing runs at startup. Logic lives in
+  `src/functions/Hardware-Functions.ps1` (`Get-GpuInfo`, `Get-CpuInfo`, `Get-MemoryInfo`, `Get-SystemHardware`,
+  `Get-HardwareSummary`, `Format-HardwareReport`), all callable from the Local PS REPL too. Covered by
+  Step 14 of `Test-DevStartup.ps1`.
+
 Remaining phases (repo comparer, storage rewrite) follow the proven donor layout — build into this shape
 unless we explicitly decide to diverge.
 
 Notes:
+- **`Win32_VideoController.AdapterRAM` is a UInt32 — it wraps at 4 GB.** A 12 GB card reports ~4095 MB, which
+  is why `Get-GpuVramBytes` reads `HardwareInformation.qwMemorySize` from the display driver's own key under
+  `HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\NNNN` (matched on
+  `DriverDesc`), falling back to the older `HardwareInformation.MemorySize` (DWORD *or* little-endian
+  REG_BINARY, hence `ConvertTo-VramBytes`) and only then to `AdapterRAM`.
 - `Get-FileEncoding` is a **ground-up rewrite** (BOM byte inspection), not a port — the donor's version was
   a no-op that always returned "UTF8".
 - `registry_tweaks.json` schema is a **redesign** of the donor's flat `key/val/key1..key4` CSV into clean

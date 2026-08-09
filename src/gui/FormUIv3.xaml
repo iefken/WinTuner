@@ -1,7 +1,7 @@
 ﻿<Window
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="WinTuner" Height="820" Width="940" MinHeight="620" MinWidth="780"
+    Title="WinTuner" Height="1000" Width="940" MinHeight="620" MinWidth="780"
     WindowStartupLocation="CenterScreen"
     UseLayoutRounding="True"
     FontFamily="Segoe UI"
@@ -670,10 +670,13 @@
                             <TextBlock Text="Windows Features" />
                         </TabItem.Header>
                         <Grid Margin="12">
+                            <!-- The feature grid takes the flexible row; the action
+                                 buttons and hint below it stay Auto so they can never
+                                 be pushed off the bottom of the tab. -->
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="120" />
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" MinHeight="200" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
@@ -695,8 +698,7 @@
                             <DataGrid x:Name="dgr_WinFeat_Features" Grid.Row="1"
                                       AutoGenerateColumns="False" IsReadOnly="True"
                                       CanUserAddRows="False" GridLinesVisibility="Horizontal"
-                                      HeadersVisibility="Column" SelectionMode="Extended"
-                                      MaxHeight="300">
+                                      HeadersVisibility="Column" SelectionMode="Extended">
                                 <DataGrid.Columns>
                                     <DataGridCheckBoxColumn Header="Select" Binding="{Binding Selected}" Width="50" />
                                     <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="2*" />
@@ -1308,11 +1310,14 @@
                             <TextBlock Text="Installed" />
                         </TabItem.Header>
                         <Grid Margin="12">
+                            <!-- The software grid takes the flexible row; the uninstall
+                                 button and hint below it stay Auto so they can never be
+                                 pushed off the bottom of the tab. -->
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="120" />
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" MinHeight="200" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
@@ -1353,8 +1358,7 @@
                             <DataGrid x:Name="dgr_Installed_Software" Grid.Row="2"
                                       AutoGenerateColumns="False"
                                       CanUserAddRows="False" GridLinesVisibility="Horizontal"
-                                      HeadersVisibility="Column" SelectionMode="Extended"
-                                      MaxHeight="300">
+                                      HeadersVisibility="Column" SelectionMode="Extended">
                                 <DataGrid.Columns>
                                     <DataGridCheckBoxColumn Header="Select" Binding="{Binding Selected}" Width="50" />
                                     <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" IsReadOnly="True" />
@@ -1384,11 +1388,14 @@
                             <TextBlock Text="WinGet Apps" />
                         </TabItem.Header>
                         <Grid Margin="12">
+                            <!-- The app grid takes the flexible row; the install/uninstall
+                                 buttons and hint below it stay Auto so they can never be
+                                 pushed off the bottom of the tab. -->
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="120" />
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" MinHeight="200" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
@@ -1419,8 +1426,7 @@
                             <DataGrid x:Name="dgr_WinGet_Apps" Grid.Row="2"
                                       AutoGenerateColumns="False"
                                       CanUserAddRows="False" GridLinesVisibility="Horizontal"
-                                      HeadersVisibility="Column" SelectionMode="Extended"
-                                      MaxHeight="300">
+                                      HeadersVisibility="Column" SelectionMode="Extended">
                                 <DataGrid.Columns>
                                     <DataGridCheckBoxColumn Header="Select" Binding="{Binding Selected}" Width="50" />
                                     <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" IsReadOnly="True" />
@@ -1458,6 +1464,68 @@
                     </StackPanel>
                 </TabItem.Header>
                 <TabControl Margin="0" Padding="0" BorderThickness="0">
+                    <!-- Hardware Info -->
+                    <TabItem x:Name="tab_Hardware" ToolTip="Graphics card, CPU, memory and motherboard details">
+                        <TabItem.Header>
+                            <TextBlock Text="Hardware Info" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <!-- GPU box is Auto (it holds 1-3 rows); the details grid
+                                 takes whatever vertical space is left over. -->
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="60" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Action buttons -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="btn_HW_Refresh" Content="Scan Hardware"
+                                        Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
+                                <Button x:Name="btn_HW_Copy" Content="Copy to Clipboard" Width="140" Height="28" Margin="8,0,0,0" />
+                                <Button x:Name="btn_HW_Save" Content="Save Report..." Width="120" Height="28" Margin="8,0,0,0" />
+                                <TextBlock x:Name="lbl_HW_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </StackPanel>
+
+                            <!-- Graphics adapters -->
+                            <GroupBox Grid.Row="1" Header="Graphics adapters" Margin="0,0,0,8"
+                                      ToolTip="VRAM comes from the display driver's own registry key, so cards larger than 4 GB report their true size (WMI's AdapterRAM is a UInt32 and caps at ~4095 MB). Integrated GPUs share system memory and may report their fallback allocation instead.">
+                                <DataGrid x:Name="dgr_HW_Gpu" Margin="4"
+                                          AutoGenerateColumns="False" IsReadOnly="True"
+                                          CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                                          HeadersVisibility="Column" MaxHeight="120">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Adapter"     Binding="{Binding Name}"       Width="2*" />
+                                        <DataGridTextColumn Header="VRAM"        Binding="{Binding VRAM}"       Width="90" />
+                                        <DataGridTextColumn Header="Vendor"      Binding="{Binding Vendor}"     Width="120" />
+                                        <DataGridTextColumn Header="Driver"      Binding="{Binding Driver}"     Width="110" />
+                                        <DataGridTextColumn Header="Driver date" Binding="{Binding DriverDate}" Width="90" />
+                                        <DataGridTextColumn Header="Mode"        Binding="{Binding Mode}"       Width="*" />
+                                        <DataGridTextColumn Header="Status"      Binding="{Binding Status}"     Width="60" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </GroupBox>
+
+                            <!-- CPU / memory / board details -->
+                            <GroupBox Grid.Row="2" Header="System details">
+                                <DataGrid x:Name="dgr_HW_Details" Margin="4"
+                                          AutoGenerateColumns="False" IsReadOnly="True"
+                                          CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                                          HeadersVisibility="Column">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="120" />
+                                        <DataGridTextColumn Header="Item"     Binding="{Binding Item}"     Width="170" />
+                                        <DataGridTextColumn Header="Value"    Binding="{Binding Value}"    Width="*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </GroupBox>
+
+                            <TextBlock Grid.Row="3" Margin="0,6,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="Read-only scan of this machine. Nothing here changes any setting." />
+                        </Grid>
+                    </TabItem>
+
                     <!-- QR Code Generator -->
                     <TabItem x:Name="tab_QRCode" ToolTip="Generate QR codes from text or URLs">
                         <TabItem.Header>

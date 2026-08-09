@@ -241,6 +241,14 @@ Function Add_Click_listeners {
             Handle-btn_QRCode_Generate
         }
     })
+
+    #--------------------------------------------------------------------
+    # Hardware Info tab
+    #--------------------------------------------------------------------
+
+    $global:btn_HW_Refresh.add_Click({ Handle-btn_HW_Refresh })
+    $global:btn_HW_Copy.add_Click({ Handle-btn_HW_Copy })
+    $global:btn_HW_Save.add_Click({ Handle-btn_HW_Save })
 }
 
 #========================================================================
