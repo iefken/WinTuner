@@ -518,15 +518,17 @@ else {
 
 Write-Step "Step 14 - Hardware Info feature"
 
-@('btn_HW_Refresh', 'btn_HW_Copy', 'btn_HW_Save', 'dgr_HW_Gpu', 'dgr_HW_Details', 'lbl_HW_Status') | ForEach-Object {
+@('btn_HW_Refresh', 'btn_HW_Copy', 'btn_HW_Save', 'dgr_HW_Gpu', 'dgr_HW_CpuMem',
+  'dgr_HW_Details', 'lbl_HW_Status') | ForEach-Object {
     $ctrl = Get-Variable -Name $_ -Scope Global -ValueOnly -ErrorAction SilentlyContinue
     if ($null -ne $ctrl) { Add-Result "Control: `$$_" "PASS" }
     else                 { Add-Result "Control: `$$_" "FAIL" "Not exposed by Load-XamlForm.ps1" }
 }
 
 @('Get-GpuInfo', 'Get-GpuVramBytes', 'Get-CpuInfo', 'Get-MemoryInfo', 'Get-SystemHardware',
-  'Get-HardwareSummary', 'Format-HardwareReport', 'ConvertTo-HumanSize', 'ConvertTo-VramBytes',
-  'Handle-btn_HW_Refresh', 'Handle-btn_HW_Copy', 'Handle-btn_HW_Save') | ForEach-Object {
+  'Get-HardwareSummary', 'Get-CpuMemoryNodes', 'New-HardwareNode', 'Expand-HardwareNodes',
+  'Format-MemoryModuleText', 'Format-HardwareReport', 'ConvertTo-HumanSize', 'ConvertTo-VramBytes',
+  'Handle-btn_HW_Refresh', 'Handle-btn_HW_Copy', 'Handle-btn_HW_Save', 'Handle-HW_CpuMem_Toggle') | ForEach-Object {
     if (Get-Command $_ -ErrorAction SilentlyContinue) { Add-Result "Function: $_" "PASS" }
     else                                              { Add-Result "Function: $_" "FAIL" "Not loaded" }
 }
@@ -562,12 +564,56 @@ try {
     if ($summary.Count -gt 0) { Add-Result "Get-HardwareSummary ran ($($summary.Count) rows)" "PASS" }
     else                      { Add-Result "Get-HardwareSummary" "FAIL" "no rows returned" }
 
+    # The System details grid asks for one section only - CPU/memory have
+    # their own grid and must not appear twice.
+    $systemRows = @(Get-HardwareSummary -Sections 'System')
+    if ($systemRows.Count -gt 0 -and -not ($systemRows | Where-Object { $_.Category -in @('CPU', 'Memory') })) {
+        Add-Result "Get-HardwareSummary -Sections System filters ($($systemRows.Count) rows)" "PASS"
+    }
+    else {
+        Add-Result "Get-HardwareSummary -Sections System" "FAIL" "CPU/Memory rows leaked into the System section"
+    }
+
     $report = Format-HardwareReport -Gpus @(Get-GpuInfo) -Summary $summary
     if ($report -match 'GRAPHICS' -and $report -match 'SYSTEM') { Add-Result "Format-HardwareReport builds report" "PASS" }
     else                                                        { Add-Result "Format-HardwareReport" "FAIL" "report missing sections" }
 }
 catch {
     Add-Result "Get-HardwareSummary / report" "FAIL" $_.Exception.Message
+}
+
+# Collapsible CPU / memory rows
+try {
+    $nodes = @(Get-CpuMemoryNodes)
+    if ($nodes.Count -gt 0) { Add-Result "Get-CpuMemoryNodes ran ($($nodes.Count) rows)" "PASS" }
+    else                    { Add-Result "Get-CpuMemoryNodes" "FAIL" "no rows returned" }
+
+    # Collapsed by default: the flattened view must match the node count until
+    # something is expanded.
+    $collapsed = @(Expand-HardwareNodes -Nodes $nodes)
+    if ($collapsed.Count -eq $nodes.Count) { Add-Result "Expand-HardwareNodes starts collapsed" "PASS" }
+    else                                   { Add-Result "Expand-HardwareNodes" "FAIL" "$($collapsed.Count) rows for $($nodes.Count) nodes" }
+
+    # Expanding a parent must add exactly its children.
+    $parent = $nodes | Where-Object { $_.HasChildren } | Select-Object -First 1
+    if ($null -ne $parent) {
+        $parent.IsExpanded = $true
+        $expanded = @(Expand-HardwareNodes -Nodes $nodes)
+        $parent.IsExpanded = $false
+
+        if ($expanded.Count -eq ($nodes.Count + @($parent.Children).Count)) {
+            Add-Result "Expand-HardwareNodes reveals children ($($parent.Item))" "PASS"
+        }
+        else {
+            Add-Result "Expand-HardwareNodes children" "FAIL" "expected $($nodes.Count + @($parent.Children).Count) rows, got $($expanded.Count)"
+        }
+    }
+    else {
+        Add-Result "Expand-HardwareNodes children" "WARN" "nothing aggregated on this machine"
+    }
+}
+catch {
+    Add-Result "Get-CpuMemoryNodes / Expand-HardwareNodes" "FAIL" $_.Exception.Message
 }
 
 #========================================================================

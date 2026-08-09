@@ -405,6 +405,37 @@
             <Setter Property="FontSize"                 Value="12" />
         </Style>
 
+        <!-- Expand/collapse caret used inside the CPU &amp; memory grid.
+             Hidden on rows that have nothing to expand. -->
+        <Style x:Key="CaretButton" TargetType="Button">
+            <Setter Property="Foreground"          Value="{StaticResource Accent}" />
+            <Setter Property="Background"          Value="Transparent" />
+            <Setter Property="BorderThickness"     Value="0" />
+            <Setter Property="FontSize"            Value="12" />
+            <Setter Property="Padding"             Value="0" />
+            <Setter Property="Cursor"              Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment"   Value="Center" />
+            <Setter Property="Focusable"           Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent" Padding="2,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasChildren}" Value="False">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource Text.Primary}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style TargetType="DataGridColumnHeader">
             <Setter Property="Background"      Value="{StaticResource Bg.Window}" />
             <Setter Property="Foreground"      Value="{StaticResource Text.Muted}" />
@@ -1470,12 +1501,14 @@
                             <TextBlock Text="Hardware Info" />
                         </TabItem.Header>
                         <Grid Margin="12">
-                            <!-- GPU box is Auto (it holds 1-3 rows); the details grid
-                                 takes whatever vertical space is left over. -->
+                            <!-- The GPU box is Auto (1-3 rows). The two detail grids split
+                                 what is left evenly and scroll internally, so expanding a
+                                 CPU/memory row can never push the rest off the tab. -->
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" MinHeight="60" />
+                                <RowDefinition Height="*"    MinHeight="90" />
+                                <RowDefinition Height="1.3*" MinHeight="90" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
@@ -1507,8 +1540,32 @@
                                 </DataGrid>
                             </GroupBox>
 
-                            <!-- CPU / memory / board details -->
-                            <GroupBox Grid.Row="2" Header="System details">
+                            <!-- CPU + memory, with matching items collapsed into one row -->
+                            <GroupBox Grid.Row="2" Header="CPU &amp; memory" Margin="0,0,0,8"
+                                      ToolTip="Identical processors and memory modules are shown as a single row. Click the caret to list them individually.">
+                                <DataGrid x:Name="dgr_HW_CpuMem" Margin="4"
+                                          AutoGenerateColumns="False" IsReadOnly="True"
+                                          CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                                          HeadersVisibility="Column">
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="" Width="26" CanUserSort="False">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Style="{StaticResource CaretButton}"
+                                                            Content="{Binding Caret}"
+                                                            ToolTip="Show / hide the individual items" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="90" />
+                                        <DataGridTextColumn Header="Item"     Binding="{Binding Item}"     Width="2*" />
+                                        <DataGridTextColumn Header="Value"    Binding="{Binding Value}"    Width="3*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </GroupBox>
+
+                            <!-- Board / BIOS / machine details -->
+                            <GroupBox Grid.Row="3" Header="System details">
                                 <DataGrid x:Name="dgr_HW_Details" Margin="4"
                                           AutoGenerateColumns="False" IsReadOnly="True"
                                           CanUserAddRows="False" GridLinesVisibility="Horizontal"
@@ -1521,7 +1578,7 @@
                                 </DataGrid>
                             </GroupBox>
 
-                            <TextBlock Grid.Row="3" Margin="0,6,0,0" Foreground="{StaticResource Text.Faint}"
+                            <TextBlock Grid.Row="4" Margin="0,6,0,0" Foreground="{StaticResource Text.Faint}"
                                        Text="Read-only scan of this machine. Nothing here changes any setting." />
                         </Grid>
                     </TabItem>

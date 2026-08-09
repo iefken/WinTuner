@@ -67,13 +67,23 @@ Bootstrap + shared infra + first features are in place and pass `Test-DevStartup
   `DispatcherTimer` (same pattern as Diagnostics) and disable the tab's buttons while in flight; Search and
   Get Installed stay synchronous. Covered by Step 13 of `Test-DevStartup.ps1`.
 
-- **Hardware Info (done):** **Tools → Hardware Info** tab — read-only local inventory. Top grid lists display
-  adapters (VRAM, vendor, driver + date, current mode); bottom grid is a flat Category/Item/Value dump of CPU,
-  memory modules and motherboard/BIOS. Buttons: Scan Hardware / Copy to Clipboard / Save Report (timestamped
-  file under `logs\hardware\`). Scanning is **manual** — nothing runs at startup. Logic lives in
-  `src/functions/Hardware-Functions.ps1` (`Get-GpuInfo`, `Get-CpuInfo`, `Get-MemoryInfo`, `Get-SystemHardware`,
-  `Get-HardwareSummary`, `Format-HardwareReport`), all callable from the Local PS REPL too. Covered by
+- **Hardware Info (done):** **Tools → Hardware Info** tab — read-only local inventory in three grids:
+  display adapters (VRAM, vendor, driver + date, current mode), **CPU & memory**, and system/motherboard/BIOS
+  details. Buttons: Scan Hardware / Copy to Clipboard / Save Report (timestamped file under `logs\hardware\`).
+  Scanning is **manual** — nothing runs at startup. Logic lives in `src/functions/Hardware-Functions.ps1`
+  (`Get-GpuInfo`, `Get-CpuInfo`, `Get-MemoryInfo`, `Get-SystemHardware`, `Get-HardwareSummary`,
+  `Get-CpuMemoryNodes`, `Format-HardwareReport`), all callable from the Local PS REPL too. Covered by
   Step 14 of `Test-DevStartup.ps1`.
+
+  The CPU & memory grid **aggregates identical items**: matching memory sticks collapse into one
+  `2 x 32.00 GB` row and a multi-socket box collapses into `2 x <model>`; a caret (▸/▾) expands the row to
+  list them per slot/socket. `Get-CpuMemoryNodes` builds parent nodes (`New-HardwareNode`), and
+  `Expand-HardwareNodes` flattens them into the rows currently visible — PSCustomObject raises no change
+  notifications, so toggling re-assigns `ItemsSource` rather than mutating in place. The caret buttons live
+  in a `DataGridTemplateColumn` and have no `x:Name`, so their Click is caught on the grid itself via
+  `AddHandler(ButtonBase.ClickEvent, ...)` and the row comes from `$e.OriginalSource.DataContext`.
+  `Get-HardwareSummary -Sections` keeps the two lower grids from listing the same facts twice while the
+  text report still gets everything.
 
 Remaining phases (repo comparer, storage rewrite) follow the proven donor layout — build into this shape
 unless we explicitly decide to diverge.
@@ -114,6 +124,10 @@ Notes:
   `ConvertFrom-Json` emits it un-enumerated down the pipeline, so `@()` wraps the whole thing as a single
   `Object[]`. Assign first, then wrap: `$x = Get-Content … | ConvertFrom-Json; $arr = @($x)`. (Piping into
   `ForEach-Object` enumerates fine — that's why the `pws_commands` load worked but the registry load didn't.)
+
+- **Same trap in reverse: `return ,$rows` from a function.** The comma keeps the array un-enumerated, so the
+  caller's `@(...)` wraps the whole thing as ONE element — `Expand-HardwareNodes` silently returned 1 row for
+  10. Return the array plainly and let callers wrap with `@()`.
 
 - **Class methods can't see session/automatic variables.** Inside a `class` method, an unqualified
   `$PSVersionTable` / `$ErrorActionPreference` / any session variable is a **parse-time** failure —

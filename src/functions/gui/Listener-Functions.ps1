@@ -249,6 +249,18 @@ Function Add_Click_listeners {
     $global:btn_HW_Refresh.add_Click({ Handle-btn_HW_Refresh })
     $global:btn_HW_Copy.add_Click({ Handle-btn_HW_Copy })
     $global:btn_HW_Save.add_Click({ Handle-btn_HW_Save })
+
+    # The caret buttons live inside a DataGrid cell template, so they have no
+    # x:Name to hook. Catch their Click as it bubbles up to the grid instead
+    # and read the row object straight off the button's DataContext.
+    $global:dgr_HW_CpuMem.AddHandler(
+        [System.Windows.Controls.Primitives.ButtonBase]::ClickEvent,
+        [System.Windows.RoutedEventHandler] {
+            param($sender, $e)
+            $button = $e.OriginalSource -as [System.Windows.FrameworkElement]
+            if ($null -ne $button) { Handle-HW_CpuMem_Toggle -Node $button.DataContext }
+        }
+    )
 }
 
 #========================================================================

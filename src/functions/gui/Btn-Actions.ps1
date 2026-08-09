@@ -1759,15 +1759,21 @@ Function Handle-btn_HW_Refresh {
             $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Graphics scan failed: $($_.Exception.Message)", 'Red')
         }
 
-        $summary = @(Get-HardwareSummary)
+        # Full flat summary drives the clipboard / file report; the grids each
+        # get their own slice of it so nothing is listed twice.
+        $summary     = @(Get-HardwareSummary)
+        $systemRows  = @(Get-HardwareSummary -Sections 'System')
+        $cpuMemNodes = @(Get-CpuMemoryNodes)
 
-        $global:HW_Gpus    = $gpus
-        $global:HW_Summary = $summary
+        $global:HW_Gpus       = $gpus
+        $global:HW_Summary    = $summary
+        $global:HW_CpuMemNodes = $cpuMemNodes
 
         $global:dgr_HW_Gpu.ItemsSource     = $gpus
-        $global:dgr_HW_Details.ItemsSource = $summary
+        $global:dgr_HW_CpuMem.ItemsSource  = @(Expand-HardwareNodes -Nodes $cpuMemNodes)
+        $global:dgr_HW_Details.ItemsSource = $systemRows
 
-        $global:lbl_HW_Status.Text = "$($gpus.Count) adapter(s), $($summary.Count) detail rows"
+        $global:lbl_HW_Status.Text = "$($gpus.Count) adapter(s), $($cpuMemNodes.Count) CPU/memory rows, $($systemRows.Count) system rows"
 
         # Log the VRAM figure - it is the thing people open this tab for.
         foreach ($gpu in $gpus) {
@@ -1780,6 +1786,33 @@ Function Handle-btn_HW_Refresh {
     catch {
         $global:lbl_HW_Status.Text = "Scan failed"
         $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Hardware scan failed: $($_.Exception.Message)", 'Red')
+    }
+}
+
+# Expands / collapses one aggregated CPU or memory row.
+#
+# Called from the DataGrid's routed Click handler, so the caller hands us the
+# row object behind the clicked caret button rather than a control reference.
+Function Handle-HW_CpuMem_Toggle {
+    param(
+        [Parameter(Mandatory = $false)]
+        $Node
+    )
+
+    try {
+        if ($null -eq $Node) { return }
+        if (-not $Node.HasChildren) { return }
+
+        $Node.IsExpanded = -not $Node.IsExpanded
+        # U+25BE when open, U+25B8 when closed.
+        $Node.Caret = if ($Node.IsExpanded) { [string][char]0x25BE } else { [string][char]0x25B8 }
+
+        # PSCustomObject doesn't raise change notifications, so rebuild the
+        # visible row list rather than hoping the binding notices.
+        $global:dgr_HW_CpuMem.ItemsSource = @(Expand-HardwareNodes -Nodes @($global:HW_CpuMemNodes))
+    }
+    catch {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Could not expand row: $($_.Exception.Message)", 'Red')
     }
 }
 

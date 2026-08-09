@@ -336,73 +336,279 @@ Function Get-HardwareSummary {
     .DESCRIPTION
         Each section is collected independently so one failing CIM class (for
         example memory on a locked-down VM) still leaves the rest readable.
+    .PARAMETER Sections
+        Which sections to include. Defaults to all three, which is what the
+        text report wants; the GUI asks for 'System' only because CPU and
+        memory have their own grid there.
     .OUTPUTS
         Array of PSCustomObject: Category, Item, Value.
     #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('CPU', 'Memory', 'System')]
+        [string[]]$Sections = @('CPU', 'Memory', 'System')
+    )
+
     $rows = @()
 
     # --- Processor -------------------------------------------------------
-    try {
-        $index = 0
-        foreach ($cpu in @(Get-CpuInfo)) {
-            $index++
-            $label = if ($index -gt 1) { "CPU $index" } else { "CPU" }
+    if ($Sections -contains 'CPU') {
+        try {
+            $index = 0
+            foreach ($cpu in @(Get-CpuInfo)) {
+                $index++
+                $label = if ($index -gt 1) { "CPU $index" } else { "CPU" }
 
-            $rows += [PSCustomObject]@{ Category = $label; Item = "Model";        Value = "$($cpu.Name)" }
-            $rows += [PSCustomObject]@{ Category = $label; Item = "Cores";        Value = "$($cpu.Cores) cores / $($cpu.Threads) threads" }
-            $rows += [PSCustomObject]@{ Category = $label; Item = "Max clock";    Value = "$($cpu.MaxClockMHz) MHz" }
-            $rows += [PSCustomObject]@{ Category = $label; Item = "Socket";       Value = "$($cpu.Socket)" }
-            $rows += [PSCustomObject]@{ Category = $label; Item = "L2 / L3 cache"; Value = "$($cpu.L2CacheKB) KB / $($cpu.L3CacheKB) KB" }
-            $rows += [PSCustomObject]@{ Category = $label; Item = "Virtualization"; Value = "$($cpu.Virtualization)" }
+                $rows += [PSCustomObject]@{ Category = $label; Item = "Model";        Value = "$($cpu.Name)" }
+                $rows += [PSCustomObject]@{ Category = $label; Item = "Cores";        Value = "$($cpu.Cores) cores / $($cpu.Threads) threads" }
+                $rows += [PSCustomObject]@{ Category = $label; Item = "Max clock";    Value = "$($cpu.MaxClockMHz) MHz" }
+                $rows += [PSCustomObject]@{ Category = $label; Item = "Socket";       Value = "$($cpu.Socket)" }
+                $rows += [PSCustomObject]@{ Category = $label; Item = "L2 / L3 cache"; Value = "$($cpu.L2CacheKB) KB / $($cpu.L3CacheKB) KB" }
+                $rows += [PSCustomObject]@{ Category = $label; Item = "Virtualization"; Value = "$($cpu.Virtualization)" }
+            }
+        }
+        catch {
+            $rows += [PSCustomObject]@{ Category = "CPU"; Item = "Error"; Value = "$_" }
+        }
+    }
+
+    # --- Memory ----------------------------------------------------------
+    if ($Sections -contains 'Memory') {
+        try {
+            $memory = Get-MemoryInfo
+
+            $slots = if ($memory.SlotsTotal -gt 0) { "$($memory.SlotsUsed) of $($memory.SlotsTotal)" } else { "$($memory.SlotsUsed)" }
+            $rows += [PSCustomObject]@{ Category = "Memory"; Item = "Total installed"; Value = $memory.TotalText }
+            $rows += [PSCustomObject]@{ Category = "Memory"; Item = "Slots used";      Value = $slots }
+
+            foreach ($module in $memory.Modules) {
+                $slotName = if ($module.Slot) { $module.Slot } else { "Module" }
+                $rows += [PSCustomObject]@{ Category = "Memory"; Item = $slotName; Value = (Format-MemoryModuleText -Module $module) }
+            }
+        }
+        catch {
+            $rows += [PSCustomObject]@{ Category = "Memory"; Item = "Error"; Value = "$_" }
+        }
+    }
+
+    # --- Board / BIOS / machine -----------------------------------------
+    if ($Sections -contains 'System') {
+        try {
+            $hw = Get-SystemHardware
+
+            $rows += [PSCustomObject]@{ Category = "System"; Item = "Manufacturer"; Value = "$($hw.SystemManufacturer)" }
+            $rows += [PSCustomObject]@{ Category = "System"; Item = "Model";        Value = "$($hw.SystemModel)" }
+            $rows += [PSCustomObject]@{ Category = "System"; Item = "Type";         Value = "$($hw.SystemType)" }
+            $rows += [PSCustomObject]@{ Category = "Motherboard"; Item = "Manufacturer"; Value = "$($hw.BoardManufacturer)" }
+            $rows += [PSCustomObject]@{ Category = "Motherboard"; Item = "Product";      Value = "$($hw.BoardProduct)" }
+            $rows += [PSCustomObject]@{ Category = "Motherboard"; Item = "Version";      Value = "$($hw.BoardVersion)" }
+            $rows += [PSCustomObject]@{ Category = "Motherboard"; Item = "Serial";       Value = "$($hw.BoardSerial)" }
+            $rows += [PSCustomObject]@{ Category = "BIOS"; Item = "Vendor";  Value = "$($hw.BiosVendor)" }
+            $rows += [PSCustomObject]@{ Category = "BIOS"; Item = "Version"; Value = "$($hw.BiosVersion)" }
+            $rows += [PSCustomObject]@{ Category = "BIOS"; Item = "Date";    Value = "$($hw.BiosDate)" }
+        }
+        catch {
+            $rows += [PSCustomObject]@{ Category = "System"; Item = "Error"; Value = "$_" }
+        }
+    }
+
+    return $rows
+}
+
+#========================================================================
+# CPU / memory tree for the collapsible grid
+#========================================================================
+Function Format-MemoryModuleText {
+    <#
+    .SYNOPSIS
+        Renders one memory module as a single descriptive line.
+    .PARAMETER Module
+        An entry from (Get-MemoryInfo).Modules.
+    .OUTPUTS
+        String, e.g. "32.00 GB @ 4800 MHz (rated 5600 MHz) - Kingston KF556C40-32".
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        $Module
+    )
+
+    $text = "$($Module.Capacity)"
+    if ($Module.RunningMHz) { $text = "$text @ $($Module.RunningMHz) MHz" }
+    if ($Module.RatedMHz -and $Module.RatedMHz -ne $Module.RunningMHz) { $text = "$text (rated $($Module.RatedMHz) MHz)" }
+    if ($Module.Manufacturer) { $text = "$text - $($Module.Manufacturer)" }
+    if ($Module.PartNumber) { $text = "$text $($Module.PartNumber)" }
+
+    return $text
+}
+
+Function New-HardwareNode {
+    <#
+    .SYNOPSIS
+        Builds one row object for the CPU / memory grid.
+    .DESCRIPTION
+        A node with children renders a caret the user can click to reveal the
+        children as extra rows; a node without children is just a plain row.
+        Children are ordinary nodes too, only indented and caret-less.
+    .PARAMETER Category
+        Left-hand grouping label ("CPU", "Memory", ...). Blank on child rows.
+    .PARAMETER Item
+        Middle column text.
+    .PARAMETER Value
+        Right-hand column text.
+    .PARAMETER Children
+        Detail rows revealed by the caret. Empty = no caret.
+    .OUTPUTS
+        PSCustomObject the DataGrid binds to.
+    #>
+    param(
+        [Parameter(Mandatory = $false)] [AllowEmptyString()] [string]$Category = "",
+        [Parameter(Mandatory = $false)] [AllowEmptyString()] [string]$Item     = "",
+        [Parameter(Mandatory = $false)] [AllowEmptyString()] [string]$Value    = "",
+        [Parameter(Mandatory = $false)] [Object[]]$Children = @()
+    )
+
+    $kids    = @($Children)
+    $hasKids = ($kids.Count -gt 0)
+
+    # U+25B8 / U+25BE - written as code points so the glyphs survive any
+    # editor that re-saves this file without a BOM.
+    $caret = if ($hasKids) { [string][char]0x25B8 } else { "" }
+
+    return [PSCustomObject]@{
+        Category    = $Category
+        Item        = $Item
+        Value       = $Value
+        Children    = $kids
+        HasChildren = $hasKids
+        IsExpanded  = $false
+        Caret       = $caret
+    }
+}
+
+Function Expand-HardwareNodes {
+    <#
+    .SYNOPSIS
+        Flattens a node list into the rows a DataGrid should currently show.
+    .DESCRIPTION
+        Emits every node, followed by its children when that node is expanded.
+        The child objects are the same instances held by the parent, so the
+        grid and the model never drift apart.
+    .PARAMETER Nodes
+        Output of Get-CpuMemoryNodes.
+    .OUTPUTS
+        Array of row objects.
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [Object[]]$Nodes = @()
+    )
+
+    $rows = @()
+    foreach ($node in @($Nodes)) {
+        if ($null -eq $node) { continue }
+        $rows += $node
+        if ($node.HasChildren -and $node.IsExpanded) { $rows += @($node.Children) }
+    }
+
+    # Returned un-wrapped on purpose: a comma-wrapped array comes back to the
+    # caller as ONE object that @() cannot re-expand. Callers wrap with @().
+    return $rows
+}
+
+Function Get-CpuMemoryNodes {
+    <#
+    .SYNOPSIS
+        Returns the collapsible CPU + memory rows for the Hardware Info tab.
+    .DESCRIPTION
+        Identical items are aggregated into one row: a dual-socket machine
+        with two matching packages shows "2 x <model>", and matching memory
+        sticks collapse into "2 x 32.00 GB". The per-socket / per-slot detail
+        moves into that row's children, reachable via the caret.
+
+        CPU and memory are collected independently, so a failing CIM class
+        costs you one section rather than the whole grid.
+    .OUTPUTS
+        Array of node objects (see New-HardwareNode).
+    #>
+    $nodes = @()
+
+    # --- Processor(s) ----------------------------------------------------
+    try {
+        $cpus = @(Get-CpuInfo)
+
+        # Group identical packages - a single-socket box just yields one group.
+        $cpuGroups = $cpus | Group-Object -Property { "$($_.Name)|$($_.Cores)|$($_.Threads)|$($_.MaxClockMHz)" }
+
+        foreach ($group in @($cpuGroups)) {
+            $cpu   = $group.Group[0]
+            $count = $group.Count
+
+            $label   = if ($count -gt 1) { "$count x $($cpu.Name)" } else { "$($cpu.Name)" }
+            $headline = "$($cpu.Cores) cores / $($cpu.Threads) threads"
+            if ($cpu.MaxClockMHz) { $headline = "$headline @ $($cpu.MaxClockMHz) MHz" }
+
+            # Details that would otherwise be six near-empty rows in the grid.
+            $children = @()
+            $children += New-HardwareNode -Item "    Manufacturer"   -Value "$($cpu.Manufacturer)"
+            $children += New-HardwareNode -Item "    Socket"         -Value (($group.Group | ForEach-Object { $_.Socket }) -join ', ')
+            $children += New-HardwareNode -Item "    L2 / L3 cache"  -Value "$($cpu.L2CacheKB) KB / $($cpu.L3CacheKB) KB"
+            $children += New-HardwareNode -Item "    Address width"  -Value "$($cpu.Architecture)-bit"
+            $children += New-HardwareNode -Item "    Virtualization" -Value "$($cpu.Virtualization)"
+
+            $nodes += New-HardwareNode -Category "CPU" -Item $label -Value $headline -Children $children
+        }
+
+        if ($cpus.Count -eq 0) {
+            $nodes += New-HardwareNode -Category "CPU" -Item "No processor reported" -Value ""
         }
     }
     catch {
-        $rows += [PSCustomObject]@{ Category = "CPU"; Item = "Error"; Value = "$_" }
+        $nodes += New-HardwareNode -Category "CPU" -Item "Error" -Value "$_"
     }
 
     # --- Memory ----------------------------------------------------------
     try {
         $memory = Get-MemoryInfo
 
-        $slots = if ($memory.SlotsTotal -gt 0) { "$($memory.SlotsUsed) of $($memory.SlotsTotal)" } else { "$($memory.SlotsUsed)" }
-        $rows += [PSCustomObject]@{ Category = "Memory"; Item = "Total installed"; Value = $memory.TotalText }
-        $rows += [PSCustomObject]@{ Category = "Memory"; Item = "Slots used";      Value = $slots }
+        $slots = if ($memory.SlotsTotal -gt 0) { "$($memory.SlotsUsed) of $($memory.SlotsTotal) slots used" } else { "$($memory.SlotsUsed) slot(s) used" }
+        $nodes += New-HardwareNode -Category "Memory" -Item "Total installed" -Value "$($memory.TotalText) - $slots"
 
-        foreach ($module in $memory.Modules) {
-            $detail = "$($module.Capacity)"
-            if ($module.RunningMHz) { $detail = "$detail @ $($module.RunningMHz) MHz" }
-            if ($module.RatedMHz -and $module.RatedMHz -ne $module.RunningMHz) { $detail = "$detail (rated $($module.RatedMHz) MHz)" }
-            if ($module.Manufacturer) { $detail = "$detail - $($module.Manufacturer)" }
-            if ($module.PartNumber) { $detail = "$detail $($module.PartNumber)" }
+        # Sticks that match on every spec that matters collapse into one row.
+        $moduleGroups = @($memory.Modules) | Group-Object -Property {
+            "$($_.Capacity)|$($_.RunningMHz)|$($_.RatedMHz)|$($_.Manufacturer)|$($_.PartNumber)"
+        }
 
-            $slotName = if ($module.Slot) { $module.Slot } else { "Module" }
-            $rows += [PSCustomObject]@{ Category = "Memory"; Item = $slotName; Value = $detail }
+        foreach ($group in @($moduleGroups)) {
+            $module = $group.Group[0]
+            $count  = $group.Count
+            $detail = Format-MemoryModuleText -Module $module
+
+            if ($count -le 1) {
+                # One stick of its kind - the row IS the slot, no caret needed.
+                $slotName = if ($module.Slot) { $module.Slot } else { "Module" }
+                $nodes += New-HardwareNode -Category "Memory" -Item $slotName -Value $detail
+                continue
+            }
+
+            $children = @()
+            foreach ($stick in $group.Group) {
+                $slotName = if ($stick.Slot) { $stick.Slot } else { "Module" }
+                if ($stick.Bank) { $slotName = "$slotName ($($stick.Bank))" }
+                $children += New-HardwareNode -Item "    $slotName" -Value (Format-MemoryModuleText -Module $stick)
+            }
+
+            $nodes += New-HardwareNode -Category "Memory" -Item "$count x $($module.Capacity)" -Value $detail -Children $children
+        }
+
+        if (@($memory.Modules).Count -eq 0) {
+            $nodes += New-HardwareNode -Category "Memory" -Item "No modules reported" -Value ""
         }
     }
     catch {
-        $rows += [PSCustomObject]@{ Category = "Memory"; Item = "Error"; Value = "$_" }
+        $nodes += New-HardwareNode -Category "Memory" -Item "Error" -Value "$_"
     }
 
-    # --- Board / BIOS / machine -----------------------------------------
-    try {
-        $hw = Get-SystemHardware
-
-        $rows += [PSCustomObject]@{ Category = "System"; Item = "Manufacturer"; Value = "$($hw.SystemManufacturer)" }
-        $rows += [PSCustomObject]@{ Category = "System"; Item = "Model";        Value = "$($hw.SystemModel)" }
-        $rows += [PSCustomObject]@{ Category = "System"; Item = "Type";         Value = "$($hw.SystemType)" }
-        $rows += [PSCustomObject]@{ Category = "Motherboard"; Item = "Manufacturer"; Value = "$($hw.BoardManufacturer)" }
-        $rows += [PSCustomObject]@{ Category = "Motherboard"; Item = "Product";      Value = "$($hw.BoardProduct)" }
-        $rows += [PSCustomObject]@{ Category = "Motherboard"; Item = "Version";      Value = "$($hw.BoardVersion)" }
-        $rows += [PSCustomObject]@{ Category = "Motherboard"; Item = "Serial";       Value = "$($hw.BoardSerial)" }
-        $rows += [PSCustomObject]@{ Category = "BIOS"; Item = "Vendor";  Value = "$($hw.BiosVendor)" }
-        $rows += [PSCustomObject]@{ Category = "BIOS"; Item = "Version"; Value = "$($hw.BiosVersion)" }
-        $rows += [PSCustomObject]@{ Category = "BIOS"; Item = "Date";    Value = "$($hw.BiosDate)" }
-    }
-    catch {
-        $rows += [PSCustomObject]@{ Category = "System"; Item = "Error"; Value = "$_" }
-    }
-
-    return $rows
+    return $nodes
 }
 
 #========================================================================
