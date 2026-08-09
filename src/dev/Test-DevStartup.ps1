@@ -636,15 +636,36 @@ catch {
     Add-Result "install.ps1 -Local switch" "FAIL" $_.Exception.Message
 }
 
+# The configured URL must be the contents API, not raw: raw is served with
+# max-age=300 and ignores cache-busting, so it reports the previous version
+# for five minutes after a release.
+$checkUrl = $Global:IniFile.UpdateCheckUrl
+if ([String]::IsNullOrWhiteSpace($checkUrl)) { $checkUrl = $global:UpdateCheckDefaultUrl }
+if ($checkUrl -match '^https://api\.github\.com/repos/.+/contents/') {
+    Add-Result "Update URL uses the contents API (not cached raw)" "PASS"
+}
+else {
+    Add-Result "Update URL uses the contents API (not cached raw)" "WARN" "points at $checkUrl"
+}
+
 # Live lookup of the published version (network - WARN, never FAIL)
 try {
-    $checkUrl = $Global:IniFile.UpdateCheckUrl
-    if ([String]::IsNullOrWhiteSpace($checkUrl)) { $checkUrl = $global:UpdateCheckDefaultUrl }
     $published = Get-RemoteAppVersion -Url $checkUrl -TimeoutSec 15
     Add-Result "Published version fetched (v$published)" "PASS"
 }
 catch {
     Add-Result "Published version fetch" "WARN" "offline or unreachable: $($_.Exception.Message)"
+}
+
+# Both response shapes must parse: the API's base64 wrapper and a plain raw
+# file. An older install's ini.json can still point at raw.
+try {
+    $rawVersion = Get-RemoteAppVersion -TimeoutSec 15 `
+        -Url 'https://raw.githubusercontent.com/iefken/WinTuner/main/ini.json'
+    Add-Result "Raw URL shape still parses (v$rawVersion)" "PASS"
+}
+catch {
+    Add-Result "Raw URL shape still parses" "WARN" "offline or unreachable: $($_.Exception.Message)"
 }
 
 # Background round-trip: start the job and pump the poller by hand

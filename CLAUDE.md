@@ -249,8 +249,18 @@ Neither mode deletes anything — files removed from the repo linger in the inst
 ### Update check
 
 `src/functions/Update-Functions.ps1` reads `AppVersion` from the published `ini.json`
-(`IniFile.UpdateCheckUrl`, default = raw GitHub main) and compares it with the running version, reporting
-into the Activity log at startup. It only ever *reports* — updating stays a deliberate `install.ps1` run.
+(`IniFile.UpdateCheckUrl`) and compares it with the running version, reporting into the Activity log at
+startup. It only ever *reports* — updating stays a deliberate `install.ps1` run.
+
+- **Use the GitHub contents API, not `raw.githubusercontent.com`.** Raw is served with
+  `Cache-Control: max-age=300` and GitHub normalises the query string away, so cache-busting does nothing:
+  for five minutes after a release the raw copy still returns the *previous* version, and someone who just
+  updated is told they are "ahead of published". Measured, not assumed. The API answers immediately; its
+  60 requests/hour unauthenticated limit is untouchable for a once-per-launch check, and it needs a
+  `User-Agent` header or it returns 403.
+- `Get-RemoteAppVersion` parses **both** shapes — the API's base64 `.content` wrapper and a plain raw file —
+  so an `ini.json` left over from an older install that still points at raw keeps working. Strip the UTF-8
+  BOM from the decoded text first, or `ConvertFrom-Json` fails with a misleading "invalid JSON primitive".
 
 - It is the **only outbound call in the app**, and it is about WinTuner itself, not PC management — the
   local-only scope boundary above still stands for every feature.

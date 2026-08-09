@@ -9,10 +9,17 @@
 # Runs in a background Start-Job drained by a DispatcherTimer, same
 # pattern as the Diagnostics and WinGet tabs: a slow or unreachable
 # network must never delay the window appearing.
+#
+# It reads the GitHub contents API, NOT raw.githubusercontent.com. Raw is
+# served with Cache-Control: max-age=300 and GitHub normalises the query
+# string away, so cache-busting does not work: for five minutes after a
+# release the raw copy still reports the previous version. Measured, not
+# assumed. The API answers immediately at the cost of a 60 requests/hour
+# unauthenticated limit, which a once-per-launch check will never reach.
 #========================================================================
 
 # Used when ini.json carries no UpdateCheckUrl (older installs).
-$global:UpdateCheckDefaultUrl = 'https://raw.githubusercontent.com/iefken/WinTuner/main/ini.json'
+$global:UpdateCheckDefaultUrl = 'https://api.github.com/repos/iefken/WinTuner/contents/ini.json?ref=main'
 
 #========================================================================
 # Version comparison
@@ -69,8 +76,13 @@ function Get-RemoteAppVersion {
     <#
     .SYNOPSIS
         Reads AppVersion from the published ini.json.
+    .DESCRIPTION
+        Accepts either a GitHub contents-API URL (JSON wrapper with the
+        file base64-encoded in .content) or a plain raw URL that returns
+        the file itself. Both shapes are handled, so an ini.json left over
+        from an older install that still points at raw keeps working.
     .PARAMETER Url
-        Raw URL of the published ini.json.
+        Contents-API or raw URL of the published ini.json.
     .PARAMETER TimeoutSec
         How long to wait before giving up.
     .OUTPUTS
@@ -94,15 +106,40 @@ function Get-RemoteAppVersion {
         # Older .NET without Tls12 in the enum - let the request fail on its own.
     }
 
-    $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec $TimeoutSec
+    # The API rejects requests without a User-Agent.
+    $headers = @{
+        'User-Agent' = 'WinTuner-UpdateCheck'
+        'Accept'     = 'application/vnd.github+json'
+    }
+
+    $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec $TimeoutSec -Headers $headers
     if (-not $response -or [String]::IsNullOrWhiteSpace($response.Content)) {
         throw "Empty response from $Url"
     }
 
-    $ini = $response.Content | ConvertFrom-Json
+    $payload = $response.Content | ConvertFrom-Json
+
+    # Contents API wraps the file; a raw URL returns it directly.
+    $isApiWrapper = ($null -ne $payload) -and
+                    ($payload.PSObject.Properties.Name -contains 'content') -and
+                    ($payload.encoding -eq 'base64')
+
+    if ($isApiWrapper) {
+        $decoded = [System.Text.Encoding]::UTF8.GetString(
+            [Convert]::FromBase64String(($payload.content -replace '\s', '')))
+        # ini.json may carry a UTF-8 BOM; ConvertFrom-Json chokes on the
+        # leading U+FEFF with a misleading "invalid JSON primitive".
+        $decoded = $decoded.TrimStart([char]0xFEFF)
+        $ini = $decoded | ConvertFrom-Json
+    }
+    else {
+        $ini = $payload
+    }
 
     # Same shape as the local file: element 0 selects the profile, the rest
     # are profiles. Take the first entry that actually declares a version.
+    # NOTE: $ini is assigned before being piped - piping ConvertFrom-Json
+    # output straight into Where-Object hands over an un-enumerated array.
     $version = ($ini | Where-Object { $_.AppVersion } | Select-Object -First 1).AppVersion
     if ([String]::IsNullOrWhiteSpace($version)) {
         throw "No AppVersion found in the published ini.json"
