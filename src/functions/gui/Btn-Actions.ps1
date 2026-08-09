@@ -1530,3 +1530,94 @@ Function Handle-btn_QRCode_Open {
         $global:lbl_QRCode_Status.Text = "Open failed"
     }
 }
+
+#========================================================================
+# Hardware Info
+#========================================================================
+
+# Scans local hardware and fills both grids. The scanned rows are kept in
+# globals so Copy/Save don't have to re-query CIM.
+Function Handle-btn_HW_Refresh {
+    try {
+        $global:lbl_HW_Status.Text = "Scanning hardware..."
+
+        # GPUs are the headline of this tab - a failure here is worth showing
+        # on its own rather than losing the CPU/memory details with it.
+        $gpus = @()
+        try {
+            $gpus = @(Get-GpuInfo)
+        }
+        catch {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Graphics scan failed: $($_.Exception.Message)", 'Red')
+        }
+
+        $summary = @(Get-HardwareSummary)
+
+        $global:HW_Gpus    = $gpus
+        $global:HW_Summary = $summary
+
+        $global:dgr_HW_Gpu.ItemsSource     = $gpus
+        $global:dgr_HW_Details.ItemsSource = $summary
+
+        $global:lbl_HW_Status.Text = "$($gpus.Count) adapter(s), $($summary.Count) detail rows"
+
+        # Log the VRAM figure - it is the thing people open this tab for.
+        foreach ($gpu in $gpus) {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "GPU: $($gpu.Name) - $($gpu.VRAM) VRAM (driver $($gpu.Driver))", 'Green')
+        }
+        if ($gpus.Count -eq 0) {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "No display adapters reported by WMI", 'Orange')
+        }
+    }
+    catch {
+        $global:lbl_HW_Status.Text = "Scan failed"
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Hardware scan failed: $($_.Exception.Message)", 'Red')
+    }
+}
+
+# Copies the last scan as a plain-text report to the clipboard.
+Function Handle-btn_HW_Copy {
+    try {
+        if ($null -eq $global:HW_Summary -or @($global:HW_Summary).Count -eq 0) {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Nothing to copy - run a scan first", 'Orange')
+            $global:lbl_HW_Status.Text = "Scan first"
+            return
+        }
+
+        $report = Format-HardwareReport -Gpus @($global:HW_Gpus) -Summary @($global:HW_Summary)
+        Set-Clipboard -Value $report
+
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Hardware report copied to clipboard", 'Green')
+        $global:lbl_HW_Status.Text = "Copied to clipboard"
+    }
+    catch {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Copy failed: $($_.Exception.Message)", 'Red')
+        $global:lbl_HW_Status.Text = "Copy failed"
+    }
+}
+
+# Writes the last scan to a timestamped file under logs\hardware.
+Function Handle-btn_HW_Save {
+    try {
+        if ($null -eq $global:HW_Summary -or @($global:HW_Summary).Count -eq 0) {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Nothing to save - run a scan first", 'Orange')
+            $global:lbl_HW_Status.Text = "Scan first"
+            return
+        }
+
+        $report = Format-HardwareReport -Gpus @($global:HW_Gpus) -Summary @($global:HW_Summary)
+
+        $dir = Join-Path $Global:LogPath 'hardware'
+        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+
+        $file = Join-Path $dir ("hardware_{0}.txt" -f (Get-Date -Format 'yyyyMMdd_HHmmss'))
+        Set-Content -Path $file -Value $report -Encoding UTF8
+
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Saved hardware report to $file", 'Green')
+        $global:lbl_HW_Status.Text = "Report saved"
+    }
+    catch {
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Save failed: $($_.Exception.Message)", 'Red')
+        $global:lbl_HW_Status.Text = "Save failed"
+    }
+}

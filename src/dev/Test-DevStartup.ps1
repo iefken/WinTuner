@@ -301,6 +301,64 @@ catch {
 }
 
 #========================================================================
+# Step 13 - Hardware Info feature (controls, functions, live scan)
+#========================================================================
+
+Write-Step "Step 13 - Hardware Info feature"
+
+@('btn_HW_Refresh', 'btn_HW_Copy', 'btn_HW_Save', 'dgr_HW_Gpu', 'dgr_HW_Details', 'lbl_HW_Status') | ForEach-Object {
+    $ctrl = Get-Variable -Name $_ -Scope Global -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $ctrl) { Add-Result "Control: `$$_" "PASS" }
+    else                 { Add-Result "Control: `$$_" "FAIL" "Not exposed by Load-XamlForm.ps1" }
+}
+
+@('Get-GpuInfo', 'Get-GpuVramBytes', 'Get-CpuInfo', 'Get-MemoryInfo', 'Get-SystemHardware',
+  'Get-HardwareSummary', 'Format-HardwareReport', 'ConvertTo-HumanSize', 'ConvertTo-VramBytes',
+  'Handle-btn_HW_Refresh', 'Handle-btn_HW_Copy', 'Handle-btn_HW_Save') | ForEach-Object {
+    if (Get-Command $_ -ErrorAction SilentlyContinue) { Add-Result "Function: $_" "PASS" }
+    else                                              { Add-Result "Function: $_" "FAIL" "Not loaded" }
+}
+
+# Byte formatter sanity (guards the VRAM display path)
+if ((ConvertTo-HumanSize -Bytes 12884901888) -eq '12.00 GB') { Add-Result "ConvertTo-HumanSize formats 12 GB" "PASS" }
+else                                                          { Add-Result "ConvertTo-HumanSize" "FAIL" "12 GB not formatted as expected" }
+
+# REG_BINARY blob -> byte count (older drivers store VRAM this way)
+$blob = [byte[]](0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00)   # 8 GB, little-endian
+if ((ConvertTo-VramBytes -RawValue $blob) -eq 8589934592) { Add-Result "ConvertTo-VramBytes reads REG_BINARY" "PASS" }
+else                                                       { Add-Result "ConvertTo-VramBytes" "FAIL" "binary blob not decoded" }
+
+# Live scan - must return at least one adapter with a non-zero VRAM figure
+try {
+    $gpus = @(Get-GpuInfo)
+    if ($gpus.Count -gt 0) {
+        Add-Result "Get-GpuInfo ran ($($gpus.Count) adapter(s))" "PASS" ($gpus[0].Name)
+        if ($gpus[0].VRAMBytes -gt 0) { Add-Result "VRAM detected: $($gpus[0].VRAM)" "PASS" }
+        else                          { Add-Result "VRAM detection" "WARN" "0 bytes reported for $($gpus[0].Name)" }
+    }
+    else {
+        Add-Result "Get-GpuInfo" "WARN" "no display adapters reported"
+    }
+}
+catch {
+    Add-Result "Get-GpuInfo" "FAIL" $_.Exception.Message
+}
+
+# Summary rows feed the details grid and the text report
+try {
+    $summary = @(Get-HardwareSummary)
+    if ($summary.Count -gt 0) { Add-Result "Get-HardwareSummary ran ($($summary.Count) rows)" "PASS" }
+    else                      { Add-Result "Get-HardwareSummary" "FAIL" "no rows returned" }
+
+    $report = Format-HardwareReport -Gpus @(Get-GpuInfo) -Summary $summary
+    if ($report -match 'GRAPHICS' -and $report -match 'SYSTEM') { Add-Result "Format-HardwareReport builds report" "PASS" }
+    else                                                        { Add-Result "Format-HardwareReport" "FAIL" "report missing sections" }
+}
+catch {
+    Add-Result "Get-HardwareSummary / report" "FAIL" $_.Exception.Message
+}
+
+#========================================================================
 # Summary
 #========================================================================
 
