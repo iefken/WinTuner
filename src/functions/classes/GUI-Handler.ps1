@@ -31,6 +31,16 @@ class GUI_Handler {
         [GUI_Handler]::Setup_VersionDisplay()
         [GUI_Handler]::Setup_AboutButton()
 
+        # Fire-and-forget: the check runs in a background job and reports into
+        # the Activity log once the dispatcher is running, so a slow or
+        # unreachable network can never delay the window appearing.
+        try {
+            $null = Start-UpdateCheck
+        }
+        catch {
+            $this.Visual_Log($env:COMPUTERNAME, "Could not start the update check: $($_.Exception.Message)", 'Gray')
+        }
+
         try {
             $global:Form.ShowDialog() | Out-Null
         }

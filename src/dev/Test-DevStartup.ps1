@@ -571,6 +571,106 @@ catch {
 }
 
 #========================================================================
+# Step 15 - Update check + installer switches
+#
+# The version comparison matters more than it looks: [version] parses
+# '0.2.0' as 0.2 and '0.10.0' as 0.10 -> 0.1, so a naive compare would
+# call 0.10.0 an OLDER release than 0.2.0 and never offer the update.
+#========================================================================
+
+Write-Step "Step 15 - Update check"
+
+@('Compare-AppVersion', 'Get-RemoteAppVersion', 'Start-UpdateCheck', 'Handle-UpdateCheck_Poll') | ForEach-Object {
+    if (Get-Command $_ -ErrorAction SilentlyContinue) { Add-Result "Function: $_" "PASS" }
+    else                                              { Add-Result "Function: $_" "FAIL" "Not loaded" }
+}
+
+# ini.json should carry the check URL (code falls back, but config is the contract)
+if (-not [String]::IsNullOrWhiteSpace($Global:IniFile.UpdateCheckUrl)) {
+    Add-Result "ini.json UpdateCheckUrl present" "PASS" $Global:IniFile.UpdateCheckUrl
+}
+else {
+    Add-Result "ini.json UpdateCheckUrl present" "WARN" "missing - falling back to the built-in default"
+}
+
+# Version comparison truth table
+$versionCases = @(
+    # Current x.y.z scheme
+    @{ L = '0.3.0';    R = '0.3.0';  Expect = 0;     Why = 'equal' },
+    @{ L = '0.3.0';    R = '0.3.1';  Expect = -1;    Why = 'patch bump is newer' },
+    @{ L = '0.3.1';    R = '0.3.0';  Expect = 1;     Why = 'patch bump is newer' },
+    @{ L = '0.3.9';    R = '0.4.0';  Expect = -1;    Why = 'feature bump beats patch' },
+    @{ L = '0.9.9';    R = '1.0.0';  Expect = -1;    Why = 'major bump wins' },
+    @{ L = '0.3.0';    R = '0.10.0'; Expect = -1;    Why = '0.10.0 is newer than 0.3.0' },
+    @{ L = '0.10.0';   R = '0.3.0';  Expect = 1;     Why = '0.10.0 is newer than 0.3.0' },
+    # Legacy x.xy releases must still compare sanely against x.y.z
+    @{ L = '0.02';     R = '0.3.0';  Expect = -1;    Why = 'old 0.02 is older than 0.3.0' },
+    @{ L = '0.3.0';    R = '0.02';   Expect = 1;     Why = 'old 0.02 is older than 0.3.0' },
+    @{ L = '1.0';      R = '1';      Expect = 0;     Why = 'missing components count as zero' },
+    @{ L = '1.0.0';    R = '1';      Expect = 0;     Why = 'missing components count as zero' },
+    @{ L = 'v0.3.0';   R = '0.3.0';  Expect = 0;     Why = 'v prefix tolerated' },
+    @{ L = '1.0-beta'; R = '1.0.0';  Expect = $null; Why = 'non-numeric is uncomparable' },
+    @{ L = '';         R = '1.0.0';  Expect = $null; Why = 'empty is uncomparable' }
+)
+$versionFails = @()
+foreach ($case in $versionCases) {
+    $got = Compare-AppVersion -Local $case.L -Remote $case.R
+    if ($got -ne $case.Expect) {
+        $versionFails += "'$($case.L)' vs '$($case.R)' gave '$got', expected '$($case.Expect)' ($($case.Why))"
+    }
+}
+if ($versionFails.Count -eq 0) {
+    Add-Result "Compare-AppVersion truth table ($($versionCases.Count) cases)" "PASS"
+}
+else {
+    Add-Result "Compare-AppVersion truth table" "FAIL" ($versionFails -join '; ')
+}
+
+# install.ps1 must expose -Local
+try {
+    $installCmd = Get-Command (Join-Path $Global:ConfigFiles 'install.ps1') -ErrorAction Stop
+    if ($installCmd.Parameters.ContainsKey('Local')) { Add-Result "install.ps1 -Local switch" "PASS" }
+    else { Add-Result "install.ps1 -Local switch" "FAIL" "parameter not declared" }
+}
+catch {
+    Add-Result "install.ps1 -Local switch" "FAIL" $_.Exception.Message
+}
+
+# Live lookup of the published version (network - WARN, never FAIL)
+try {
+    $checkUrl = $Global:IniFile.UpdateCheckUrl
+    if ([String]::IsNullOrWhiteSpace($checkUrl)) { $checkUrl = $global:UpdateCheckDefaultUrl }
+    $published = Get-RemoteAppVersion -Url $checkUrl -TimeoutSec 15
+    Add-Result "Published version fetched (v$published)" "PASS"
+}
+catch {
+    Add-Result "Published version fetch" "WARN" "offline or unreachable: $($_.Exception.Message)"
+}
+
+# Background round-trip: start the job and pump the poller by hand
+try {
+    if (Start-UpdateCheck -TimeoutSec 15) {
+        $deadline = (Get-Date).AddSeconds(45)
+        while ($global:UpdateCheck_Job -and (Get-Date) -lt $deadline) {
+            Handle-UpdateCheck_Poll
+            Start-Sleep -Milliseconds 300
+        }
+        if ($null -eq $global:UpdateCheck_Job) {
+            Add-Result "Update check job round-trip" "PASS" "job drained and cleaned up"
+        }
+        else {
+            Add-Result "Update check job round-trip" "WARN" "job still running after 45s"
+        }
+    }
+    else {
+        Add-Result "Update check job round-trip" "WARN" "check did not start"
+    }
+}
+catch {
+    Add-Result "Update check job round-trip" "FAIL" $_.Exception.Message
+}
+
+#========================================================================
 # Summary
 #========================================================================
 

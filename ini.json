@@ -7,6 +7,7 @@
         "ConfigPath": "src\\functions\\Config.ps1",
         "GUIPath": "src\\gui\\FormUIv3.xaml",
         "LogPath": "logs",
-        "AppVersion": "0.02"
+        "AppVersion": "0.3.0",
+        "UpdateCheckUrl": "https://raw.githubusercontent.com/iefken/WinTuner/main/ini.json"
     }
 ]

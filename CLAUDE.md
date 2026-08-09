@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -226,6 +226,54 @@ Once `Main.ps1` exists, launch from the project root:
 
 A dev startup test (validates the full load chain without showing the GUI) is worth porting from the source
 (`DHL_DEVICE_MANAGER\Conf\src\dev\Test-DevStartup.ps1`) — it reports PASS/WARN/FAIL per load step.
+
+### Installing vs. running from the repo
+
+**The Start Menu / desktop shortcut does NOT run this repo.** It runs `%USERPROFILE%\WinTuner\Main.ps1`, a
+separate copy that `install.ps1` unpacks. Pushing to `main` does not update it — re-run the installer, or
+you will spend an afternoon wondering why your fix "did nothing".
+
+```powershell
+.\install.ps1           # download + install the published version from GitHub main
+.\install.ps1 -Local    # install THIS working copy (uncommitted edits included)
+```
+
+`-Local` skips the network entirely and copies from `$PSScriptRoot`, excluding `.git`, `.gitignore`,
+`.claude`, `.github` and `logs`. It refuses to run if source and destination resolve to the same folder.
+Use it to test a change in the installed app before pushing. Both modes print the installed `AppVersion`
+at the end, so a stale install is obvious.
+
+Neither mode deletes anything — files removed from the repo linger in the install directory forever. Wipe
+`%USERPROFILE%\WinTuner` by hand if a rename ever leaves an orphan behind.
+
+### Update check
+
+`src/functions/Update-Functions.ps1` reads `AppVersion` from the published `ini.json`
+(`IniFile.UpdateCheckUrl`, default = raw GitHub main) and compares it with the running version, reporting
+into the Activity log at startup. It only ever *reports* — updating stays a deliberate `install.ps1` run.
+
+- It is the **only outbound call in the app**, and it is about WinTuner itself, not PC management — the
+  local-only scope boundary above still stands for every feature.
+- Runs in a `Start-Job` + `DispatcherTimer`, so an unreachable network cannot delay the window. A failed
+  check logs a grey "skipped" line and nothing else.
+- **Bump `AppVersion` in `ini.json` on every release**, or the check can never fire.
+- `Compare-AppVersion` compares components **numerically**, on purpose. `[version]` parses `'0.10.0'` as
+  `0.10` → `0.1`, so it would rank `0.10.0` *older* than `0.3.0` and silently never offer the update.
+  Missing components count as zero, which is also what keeps the legacy `x.xy` releases (`0.01`, `0.02`)
+  ordering correctly against `x.y.z`. Non-numeric versions (`1.0-beta`) return `$null` = "can't compare".
+
+### Versioning — `x.y.z`
+
+| Part | Bump when | Who decides |
+|------|-----------|-------------|
+| `x` | Major release | **Ief only** — never bump this unless told to |
+| `y` | A feature is added | Bump it as part of the feature commit |
+| `z` | Bug fix or small improvement | Bump it as part of the fix commit |
+
+`AppVersion` in `ini.json` is the single source of truth — the version display, the About window and the
+update check all read it. Releases before `0.3.0` used a flat `x.xy` form (`0.01`, `0.02`);
+`Compare-AppVersion` orders the two schemes against each other correctly, so installs still on `0.02`
+detect `0.3.0` as an update.
 
 ## Conventions reminder
 

@@ -1,9 +1,33 @@
-# WinTuner Installation Script
-# This script downloads and sets up WinTuner on your system
+﻿<#
+.SYNOPSIS
+    Installs WinTuner to %USERPROFILE%\WinTuner and creates the shortcuts.
+
+.DESCRIPTION
+    By default the current published code is downloaded from GitHub 'main'.
+    Use -Local to install straight from this working copy instead, which is
+    what you want when testing a change before pushing it.
+
+.PARAMETER Local
+    Install from the folder this script lives in rather than downloading.
+    '.git', '.claude' and 'logs' are not copied.
+
+.EXAMPLE
+    .\install.ps1
+    Downloads and installs the published version from GitHub main.
+
+.EXAMPLE
+    .\install.ps1 -Local
+    Installs the working copy as-is, without touching the network.
+#>
+[CmdletBinding()]
+param(
+    [switch]$Local
+)
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== WinTuner Installation ===" -ForegroundColor Cyan
+$mode = if ($Local) { 'local working copy' } else { 'GitHub main' }
+Write-Host "=== WinTuner Installation ($mode) ===" -ForegroundColor Cyan
 Write-Host ""
 
 # Check if running as Administrator
@@ -24,39 +48,94 @@ if (-not (Test-Path $installDir)) {
     Write-Host "Created installation directory" -ForegroundColor Green
 }
 
-# Download the repository
-Write-Host "Downloading WinTuner..." -ForegroundColor Cyan
-$tempZip = "$env:TEMP\WinTuner.zip"
-$repoUrl = "https://github.com/iefken/WinTuner/archive/refs/heads/main.zip"
+if ($Local) {
+    #--------------------------------------------------------------------
+    # Install from this working copy - no network, no git state involved.
+    # Whatever is on disk right now is what gets installed, including
+    # uncommitted edits. That is the point of the switch.
+    #--------------------------------------------------------------------
+    $sourceDir = $PSScriptRoot
+    if ([String]::IsNullOrWhiteSpace($sourceDir)) {
+        Write-Error "Cannot resolve the script folder - run install.ps1 from a file, not a pasted snippet."
+        exit 1
+    }
 
-try {
-    Invoke-WebRequest -Uri $repoUrl -OutFile $tempZip -UseBasicParsing
-    Write-Host "Download complete" -ForegroundColor Green
-}
-catch {
-    Write-Error "Failed to download WinTuner: $_"
-    Write-Host "Please check your internet connection and the repository URL."
-    exit 1
-}
+    Write-Host "Source: $sourceDir" -ForegroundColor Cyan
 
-# Extract the archive
-Write-Host "Extracting files..." -ForegroundColor Cyan
-try {
-    Expand-Archive -Path $tempZip -DestinationPath $env:TEMP -Force
+    # Copying a folder onto itself would silently shred it.
+    $srcFull = [System.IO.Path]::GetFullPath($sourceDir).TrimEnd('\')
+    $dstFull = [System.IO.Path]::GetFullPath($installDir).TrimEnd('\')
+    if ($srcFull -eq $dstFull) {
+        Write-Error "Source and install directory are the same ($dstFull). Nothing to do."
+        exit 1
+    }
+
+    if (-not (Test-Path (Join-Path $sourceDir 'Main.ps1'))) {
+        Write-Error "No Main.ps1 in $sourceDir - this does not look like the WinTuner repo."
+        exit 1
+    }
+
+    # Repo plumbing and local run artefacts have no business in the install.
+    # NOTE: in a git worktree '.git' is a file, not a folder - match by name.
+    $excluded = @('.git', '.gitignore', '.claude', '.github', 'logs')
+
+    Write-Host "Copying files..." -ForegroundColor Cyan
+    try {
+        $copied = 0
+        Get-ChildItem -LiteralPath $sourceDir -Force |
+            Where-Object { $excluded -notcontains $_.Name } |
+            ForEach-Object {
+                Copy-Item -LiteralPath $_.FullName -Destination $installDir -Recurse -Force
+                $copied++
+            }
+        Write-Host "Copied $copied top-level item(s)" -ForegroundColor Green
+    }
+    catch {
+        Write-Error "Failed to copy the working copy: $_"
+        exit 1
+    }
+}
+else {
+    #--------------------------------------------------------------------
+    # Install the published version from GitHub main.
+    #--------------------------------------------------------------------
+    Write-Host "Downloading WinTuner..." -ForegroundColor Cyan
+    $tempZip = "$env:TEMP\WinTuner.zip"
+    $repoUrl = "https://github.com/iefken/WinTuner/archive/refs/heads/main.zip"
     $extractedDir = "$env:TEMP\WinTuner-main"
-    
-    # Copy files to installation directory
-    Copy-Item -Path "$extractedDir\*" -Destination $installDir -Recurse -Force
-    Write-Host "Files extracted successfully" -ForegroundColor Green
-}
-catch {
-    Write-Error "Failed to extract files: $_"
-    exit 1
-}
-finally {
-    # Cleanup
-    Remove-Item $tempZip -ErrorAction SilentlyContinue
-    Remove-Item $extractedDir -Recurse -ErrorAction SilentlyContinue
+
+    try {
+        # PS 5.1 can default to TLS 1.0, which GitHub refuses.
+        [Net.ServicePointManager]::SecurityProtocol =
+            [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+
+        Invoke-WebRequest -Uri $repoUrl -OutFile $tempZip -UseBasicParsing
+        Write-Host "Download complete" -ForegroundColor Green
+    }
+    catch {
+        Write-Error "Failed to download WinTuner: $_"
+        Write-Host "Please check your internet connection and the repository URL."
+        exit 1
+    }
+
+    # Extract the archive
+    Write-Host "Extracting files..." -ForegroundColor Cyan
+    try {
+        Expand-Archive -Path $tempZip -DestinationPath $env:TEMP -Force
+
+        # Copy files to installation directory
+        Copy-Item -Path "$extractedDir\*" -Destination $installDir -Recurse -Force
+        Write-Host "Files extracted successfully" -ForegroundColor Green
+    }
+    catch {
+        Write-Error "Failed to extract files: $_"
+        exit 1
+    }
+    finally {
+        # Cleanup
+        Remove-Item $tempZip -ErrorAction SilentlyContinue
+        Remove-Item $extractedDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 # Create a desktop shortcut (optional)
@@ -96,6 +175,17 @@ catch {
 
 Write-Host ""
 Write-Host "=== Installation Complete ===" -ForegroundColor Green
+
+# Report what actually landed, so a stale install is obvious at a glance.
+try {
+    $installedIni = Get-Content (Join-Path $installDir 'ini.json') -Raw | ConvertFrom-Json
+    $installedVer = ($installedIni | Where-Object { $_.Profile } | Select-Object -First 1).AppVersion
+    Write-Host "Installed version: v$installedVer  ($mode)" -ForegroundColor Green
+}
+catch {
+    Write-Warning "Could not read the installed version: $_"
+}
+
 Write-Host ""
 Write-Host "To run WinTuner:" -ForegroundColor Cyan
 Write-Host "  1. Double-click the desktop shortcut"
