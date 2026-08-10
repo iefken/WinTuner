@@ -1560,19 +1560,27 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                            <!-- Text input row -->
+                            <!-- Text input row. The Format list is filled from
+                                 Get-BarcodeFormats at startup (Prepare_ComboBoxes)
+                                 rather than hardcoded here, so the XAML can never
+                                 offer a symbology the encoder cannot write. -->
                             <Grid Grid.Row="0" Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="130" />
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="80" />
                                 </Grid.ColumnDefinitions>
                                 <Label   Grid.Column="0" Content="Text or URL:" VerticalAlignment="Center" />
                                 <TextBox x:Name="txt_QRCode_Text" Grid.Column="1" Margin="6,0" VerticalAlignment="Center"
-                                         ToolTip="Enter the text or URL to encode in the QR code" />
-                                <Label   Grid.Column="2" Content="Size:" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                <ComboBox x:Name="cmb_QRCode_Size" Grid.Column="3" Margin="6,0" VerticalAlignment="Center">
+                                         ToolTip="Enter the text or URL to encode" />
+                                <Label   Grid.Column="2" Content="Format:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <ComboBox x:Name="cmb_QRCode_Format" Grid.Column="3" Margin="6,0" VerticalAlignment="Center"
+                                          ToolTip="Barcode symbology. All are generated locally." />
+                                <Label   Grid.Column="4" Content="Size:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <ComboBox x:Name="cmb_QRCode_Size" Grid.Column="5" Margin="6,0" VerticalAlignment="Center">
                                     <ComboBoxItem Content="200" Tag="200" />
                                     <ComboBoxItem Content="300" Tag="300" IsSelected="True" />
                                     <ComboBoxItem Content="400" Tag="400" />
@@ -1600,7 +1608,7 @@
                             </Border>
 
                             <TextBlock Grid.Row="3" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
-                                       Text="The code redraws as you type, so what you see always matches the box above. Save it as a PNG or open it in your default image viewer, and scan with any phone camera. Generated entirely on this machine - nothing is uploaded and no internet connection is needed." />
+                                       Text="Pick a symbology, type, and the code redraws as you type - what you see always matches the box above. 1D formats are fussy about their input (an EAN-13 wants exactly 13 digits); the status line says what is wrong. Save it as a PNG or open it in your default image viewer. Generated entirely on this machine - nothing is uploaded and no internet connection is needed." />
                         </Grid>
                     </TabItem>
 

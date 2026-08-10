@@ -103,8 +103,12 @@ Bootstrap + shared infra + first features are in place and pass `Test-DevStartup
   128/39/93, Codabar, EAN-8/13, UPC-A/E, ITF, MSI). Covered by Step 16 of `Test-DevStartup.ps1`, which
   encodes every advertised format and re-renders with the default proxy pointed at a closed port.
 
-  - **The UI has no format picker yet** — `Get-QRCodeSelectedFormat` reads `$global:cmb_QRCode_Format` and
-    falls back to QR when that control does not exist, so adding the dropdown is a XAML-only change.
+  - The **Format** dropdown (`cmb_QRCode_Format`) is filled by `Prepare_ComboBoxes` from
+    `Get-BarcodeFormats` — never hardcoded in XAML, so a decode-only symbology cannot be offered.
+    It holds **display strings**, like every other ComboBox here, and `Get-BarcodeFormat` maps the string
+    back to its format object. Binding the objects with `DisplayMemberPath` renders
+    `@{Key=EAN_13; Display=…}` in the closed box under this app's ComboBox `ControlTemplate`.
+    `Get-QRCodeSelectedFormat` still falls back to QR when the control is absent.
   - ZXing's `BarcodeFormat` enum contains **decode-only** members (`MAXICODE`, `RSS_14`, `RSS_EXPANDED`,
     `IMB`, `PHARMA_CODE`, `All_1D`, `UPC_EAN_EXTENSION`). Offering one in the UI earns a runtime
     "No encoder available for format X", so `$script:BarcodeFormats` lists only what actually writes.
@@ -112,8 +116,26 @@ Bootstrap + shared infra + first features are in place and pass `Test-DevStartup
     Without it the only renderer is the `System.Drawing` one — a `Bitmap` → PNG → `BitmapImage` round-trip
     through a temp file on every keystroke. **Nothing is written to disk while typing**; Save encodes
     straight to the chosen path and Open writes one temp file on demand.
-  - 1D codes render as a strip (`Size` × `0.45`), not a square, and carry their payload as text underneath
-    (`PureBarcode = $false`); 2D codes stay square and clean.
+  - 1D codes render as a strip (`Size` × `0.45`), not a square; 2D codes stay square.
+  - **The human-readable caption under 1D codes is drawn by us, not by ZXing.** `PureBarcode = $false` is
+    honoured only by ZXing's `System.Drawing` renderer — `WriteableBitmapRenderer` exposes `Font*`
+    properties and ignores them, and adopting the GDI renderer would cost a `Bitmap` → PNG → `BitmapImage`
+    round-trip per keystroke. So `New-BarcodeBitmap` asks for a pure symbol and `Add-BarcodeCaption`
+    composites the payload underneath with `DrawingVisual` + `FormattedText` → `RenderTargetBitmap`,
+    entirely in WPF.
+    - **The bars give up the caption's height; the strip does not grow** — the footprint stays
+      `Size` × `Size * 0.45` whether captioned or not.
+    - Caption band is 24% of the strip (clamped 10–40px), Consolas so digit columns line up. A payload
+      wider than the symbol is scaled down to fit rather than clipped.
+    - Below ~24px of remaining bar height the caption is **dropped rather than shrinking the bars** into
+      something a scanner can't read — that's the `Size 60` case.
+    - `-NoCaption` suppresses it and gives the space back to the bars. 2D formats never get one.
+    - **`src/dev/render-preview.ps1` cannot be trusted for this tab.** Its screenshot of the QR tab shows
+      the bars without the caption, even though `img_QRCode.Source` is provably the composited 500×225
+      bitmap (save it with `Save-BarcodeBitmap` and the digits are there) and the Image control lays out at
+      300×135, the captioned aspect. The harness renders an off-screen window (`Left/Top = -10000`) into a
+      `RenderTargetBitmap`, and that path mis-composites this image. Verify barcode changes by saving
+      `$global:img_QRCode.Source` to a PNG, not by screenshotting the window.
   - **`install.ps1` delivers this app as a downloaded ZIP, so every extracted file carries a mark-of-the-web
     stream and `Add-Type` refuses to load a blocked assembly.** `Import-BarcodeAssemblies` runs
     `Unblock-File` over `lib\*.dll` before loading them. Config.ps1 calls it at startup so a missing or

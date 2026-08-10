@@ -153,11 +153,18 @@ function New-BarcodeBitmap {
         Size wide by a proportional height, because a square Code 128 is mostly
         wasted white space.
 
+    .PARAMETER NoCaption
+        Suppresses the human-readable payload printed under a 1D code, giving
+        the bars that space back. Ignored by 2D formats, which never get one.
+
     .EXAMPLE
         $bmp = New-BarcodeBitmap -Text 'https://example.com' -Size 300
 
     .EXAMPLE
         $bmp = New-BarcodeBitmap -Text '5901234123457' -Format 'EAN-13' -Size 400
+
+    .EXAMPLE
+        $bmp = New-BarcodeBitmap -Text 'ABC-123' -Format 'Code 128' -NoCaption
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -169,7 +176,10 @@ function New-BarcodeBitmap {
 
         [Parameter(Mandatory = $false)]
         [ValidateRange(50, 2000)]
-        [int]$Size = 300
+        [int]$Size = 300,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$NoCaption
     )
 
     if ([String]::IsNullOrWhiteSpace($Text)) {
@@ -189,14 +199,31 @@ function New-BarcodeBitmap {
     $width  = $Size
     $height = if ($fmt.Dimensions -eq '2D') { $Size } else { [int][Math]::Round($Size * 0.45) }
 
+    # Real 1D labels print the payload under the bars so a human can read what a
+    # scanner would. ZXing will not draw it for us here: PureBarcode = $false is
+    # honoured only by its System.Drawing renderer, while
+    # WriteableBitmapRenderer exposes Font* properties and ignores them. Adopting
+    # the GDI renderer would mean a Bitmap -> PNG -> BitmapImage round-trip per
+    # keystroke, so the caption is composited afterwards instead - see
+    # Add-BarcodeCaption. The bars give up the caption's height rather than the
+    # strip growing, so the overall footprint stays Size x (Size * 0.45).
+    $captionHeight = 0
+    if ($fmt.Dimensions -eq '1D' -and -not $NoCaption) {
+        $captionHeight = [int][Math]::Round($height * 0.24)
+        if ($captionHeight -lt 10) { $captionHeight = 10 }
+        if ($captionHeight -gt 40) { $captionHeight = 40 }
+
+        # Below this the bars get too short to scan reliably, so the digits are
+        # dropped rather than shrinking the symbol into uselessness.
+        if (($height - $captionHeight) -lt 24) { $captionHeight = 0 }
+    }
+
     $writer = New-Object ZXing.Presentation.BarcodeWriter
     $writer.Format = [ZXing.BarcodeFormat]::($fmt.ZXing)
     $writer.Options.Width  = $width
-    $writer.Options.Height = $height
+    $writer.Options.Height = $height - $captionHeight
     $writer.Options.Margin = 1
-    # Print the payload under 1D codes, the way a real label does. QR and
-    # friends stay clean - the text would only steal module space.
-    $writer.Options.PureBarcode = ($fmt.Dimensions -eq '2D')
+    $writer.Options.PureBarcode = $true   # we draw the caption ourselves
 
     try {
         $bitmap = $writer.Write($Text)
@@ -208,8 +235,111 @@ function New-BarcodeBitmap {
         throw "$($fmt.Display): $why  ($($fmt.Hint))"
     }
 
+    if ($captionHeight -gt 0) {
+        $bitmap = Add-BarcodeCaption -Bitmap $bitmap -Text $Text -CaptionHeight $captionHeight
+    }
+
     if ($bitmap.CanFreeze) { $bitmap.Freeze() }
     return $bitmap
+}
+
+function Add-BarcodeCaption {
+    <#
+    .SYNOPSIS
+        Composites a human-readable caption underneath a barcode bitmap.
+
+    .DESCRIPTION
+        Draws the barcode and its payload onto one DrawingVisual and rasterises
+        the result, so everything stays in WPF - no System.Drawing, no temp file.
+        Returns a frozen BitmapSource that is CaptionHeight taller than the bars.
+
+    .PARAMETER Bitmap
+        The rendered barcode, without a caption.
+
+    .PARAMETER Text
+        The payload to print. Long values are shrunk to fit rather than clipped.
+
+    .PARAMETER CaptionHeight
+        Height of the caption band in pixels.
+
+    .EXAMPLE
+        Add-BarcodeCaption -Bitmap $bars -Text '5901234123457' -CaptionHeight 24
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Media.Imaging.BitmapSource]$Bitmap,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Text,
+
+        [Parameter(Mandatory = $true)]
+        [int]$CaptionHeight
+    )
+
+    $width    = $Bitmap.PixelWidth
+    $barHeight = $Bitmap.PixelHeight
+    $total    = $barHeight + $CaptionHeight
+
+    # Consolas keeps digit columns even, which is what makes a printed code
+    # comfortable to read back character by character.
+    $typeface = New-Object System.Windows.Media.Typeface('Consolas')
+    $fontSize = [Math]::Max(8.0, $CaptionHeight * 0.72)
+
+    $formatted = New-Object System.Windows.Media.FormattedText(
+        $Text,
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [System.Windows.FlowDirection]::LeftToRight,
+        $typeface,
+        $fontSize,
+        [System.Windows.Media.Brushes]::Black)
+
+    # A long Code 128 payload is wider than the symbol - scale the text down to
+    # fit instead of letting it run off the edge.
+    $maxTextWidth = $width * 0.94
+    if ($formatted.Width -gt $maxTextWidth -and $formatted.Width -gt 0) {
+        $fontSize = [Math]::Max(6.0, $fontSize * ($maxTextWidth / $formatted.Width))
+        $formatted = New-Object System.Windows.Media.FormattedText(
+            $Text,
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [System.Windows.FlowDirection]::LeftToRight,
+            $typeface,
+            $fontSize,
+            [System.Windows.Media.Brushes]::Black)
+    }
+
+    $visual = New-Object System.Windows.Media.DrawingVisual
+    $dc = $visual.RenderOpen()
+    try {
+        # White under everything: the caption band would otherwise be
+        # transparent, which prints as whatever is behind it.
+        $dc.DrawRectangle(
+            [System.Windows.Media.Brushes]::White, $null,
+            (New-Object System.Windows.Rect(0, 0, $width, $total)))
+
+        $dc.DrawImage($Bitmap, (New-Object System.Windows.Rect(0, 0, $width, $barHeight)))
+
+        $textX = [Math]::Max(0.0, ($width - $formatted.Width) / 2)
+        $textY = $barHeight + [Math]::Max(0.0, ($CaptionHeight - $formatted.Height) / 2)
+        $dc.DrawText($formatted, (New-Object System.Windows.Point($textX, $textY)))
+    }
+    finally {
+        $dc.Close()
+    }
+
+    $target = New-Object System.Windows.Media.Imaging.RenderTargetBitmap(
+        $width, $total, 96, 96, [System.Windows.Media.PixelFormats]::Pbgra32)
+    $target.Render($visual)
+
+    # Snapshot into a plain bitmap rather than handing back the live
+    # RenderTargetBitmap. Both work for display and for PngBitmapEncoder; this
+    # just detaches the result from the visual that produced it.
+    $cached = New-Object System.Windows.Media.Imaging.CachedBitmap(
+        $target,
+        [System.Windows.Media.Imaging.BitmapCreateOptions]::None,
+        [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
+    $cached.Freeze()
+
+    return $cached
 }
 
 function Test-BarcodeText {

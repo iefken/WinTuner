@@ -238,6 +238,30 @@ class GUI_Handler {
             $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Prepare_ComboBoxes: failed to load Windows features categories: $_", 'Red')
         }
 
+        # --- Barcode formats (Tools -> QR Code) ---
+        # Display names go in, like every other ComboBox here; Get-BarcodeFormat
+        # maps the string back to its format object. Adding the objects instead
+        # and leaning on DisplayMemberPath renders "@{Key=EAN_13; Display=...}"
+        # in the closed box under this app's ComboBox template.
+        #
+        # The list comes from the encoder rather than from XAML, so a
+        # decode-only symbology can never be offered - picking one would fail
+        # only at render time with "No encoder available for format X".
+        try {
+            $formats = @(Get-BarcodeFormats)
+
+            $global:cmb_QRCode_Format.Items.Clear()
+            foreach ($fmt in $formats) {
+                $global:cmb_QRCode_Format.Items.Add($fmt.Display) | Out-Null
+            }
+            if ($formats.Count -gt 0) {
+                $global:cmb_QRCode_Format.SelectedIndex = 0   # QR Code leads the list
+            }
+        }
+        catch {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Prepare_ComboBoxes: failed to load barcode formats: $_", 'Red')
+        }
+
         # --- DNS provider filter ---
         try {
             $dnsProviders = Get-DNSProviders

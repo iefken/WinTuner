@@ -1658,11 +1658,17 @@ Function Get-QRCodeSelectedFormat {
         $combo = $global:cmb_QRCode_Format
         if ($combo -and $combo.SelectedItem) {
             $item = $combo.SelectedItem
-            # Works for both a bound Get-BarcodeFormats object and a plain
-            # ComboBoxItem carrying the key in its Tag.
-            if ($item.PSObject.Properties.Name -contains 'Key') { return $item.Key }
-            if ($item.Tag) { return [string]$item.Tag }
-            return [string]$item.Content
+
+            # Prepare_ComboBoxes fills this with display strings, but accept the
+            # other shapes too - Get-BarcodeFormat resolves any of them, and a
+            # wrong guess here would silently fall back to QR for every format.
+            if ($item -is [string]) { return $item }
+            if ($item -is [System.Windows.Controls.ComboBoxItem]) {
+                if ($item.Tag) { return [string]$item.Tag }
+                return [string]$item.Content
+            }
+            if ($item.PSObject.Properties.Name -contains 'Key') { return [string]$item.Key }
+            return [string]$item
         }
     }
     catch { }
@@ -1716,8 +1722,15 @@ Function Update-QRCodePreview {
         if ($null -eq $text) { $text = '' }
         $text = $text.Trim()
 
-        $size   = Get-QRCodeSelectedSize
-        $format = Get-QRCodeSelectedFormat
+        $size    = Get-QRCodeSelectedSize
+        $format  = Get-QRCodeSelectedFormat
+        $fmtInfo = Get-BarcodeFormat -Name $format
+
+        # Keep the input rules for the chosen symbology within reach - "Codabar"
+        # tells nobody that it wants a start/stop letter around the digits.
+        if ($fmtInfo) {
+            $global:txt_QRCode_Text.ToolTip = "$($fmtInfo.Display): $($fmtInfo.Hint)"
+        }
 
         # Empty box: clear the image rather than leave the previous code on
         # screen looking like it still belongs to the input.
@@ -1726,7 +1739,9 @@ Function Update-QRCodePreview {
             $global:QRCode_CurrentBitmap  = $null
             $global:QRCode_LastKey        = ''
             $global:QRCode_LastError      = ''
-            Set-QRCodeStatus "Ready"
+            # Show what this format expects instead of a bare "Ready".
+            if ($fmtInfo) { Set-QRCodeStatus "$($fmtInfo.Display): $($fmtInfo.Hint)" }
+            else          { Set-QRCodeStatus "Ready" }
             return
         }
 

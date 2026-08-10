@@ -245,7 +245,8 @@ Function Add_Click_listeners {
     $global:txt_QRCode_Text.Add_TextChanged({ Start-QRCodeAutoUpdate })
     $global:cmb_QRCode_Size.Add_SelectionChanged({ Start-QRCodeAutoUpdate })
 
-    # A format picker is not in the XAML yet; wire it if one appears.
+    # Format picker - filled from Get-BarcodeFormats by Prepare_ComboBoxes.
+    # Guarded because the handlers fall back to QR when the control is absent.
     if ($global:cmb_QRCode_Format) {
         $global:cmb_QRCode_Format.Add_SelectionChanged({ Start-QRCodeAutoUpdate })
     }

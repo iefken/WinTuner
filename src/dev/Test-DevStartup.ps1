@@ -784,7 +784,7 @@ catch {
 
 Write-Step "Step 16 - Barcode / QR generation"
 
-@('txt_QRCode_Text', 'cmb_QRCode_Size', 'btn_QRCode_Save', 'btn_QRCode_Open',
+@('txt_QRCode_Text', 'cmb_QRCode_Size', 'cmb_QRCode_Format', 'btn_QRCode_Save', 'btn_QRCode_Open',
   'img_QRCode', 'lbl_QRCode_Status') | ForEach-Object {
     $ctrl = Get-Variable -Name $_ -Scope Global -ValueOnly -ErrorAction SilentlyContinue
     if ($null -ne $ctrl) { Add-Result "Control: `$$_" "PASS" }
@@ -792,7 +792,7 @@ Write-Step "Step 16 - Barcode / QR generation"
 }
 
 @('Get-BarcodeFormats', 'Get-BarcodeFormat', 'Import-BarcodeAssemblies', 'New-BarcodeBitmap',
-  'Test-BarcodeText', 'Save-BarcodeBitmap', 'New-QRCode', 'Show-QRCode', 'Get-QRCodeTempPath',
+  'Add-BarcodeCaption', 'Test-BarcodeText', 'Save-BarcodeBitmap', 'New-QRCode', 'Show-QRCode', 'Get-QRCodeTempPath',
   'Update-QRCodePreview', 'Start-QRCodeAutoUpdate', 'Set-QRCodeStatus',
   'Get-QRCodeSelectedFormat', 'Get-QRCodeSelectedSize',
   'Handle-btn_QRCode_Save', 'Handle-btn_QRCode_Open') | ForEach-Object {
@@ -853,6 +853,77 @@ catch {
     Add-Result "2D square / 1D strip aspect" "FAIL" $_.Exception.Message
 }
 
+# Human-readable caption under 1D codes. ZXing's WPF renderer draws no text, so
+# this is composited by Add-BarcodeCaption - assert on actual pixels, because
+# "the function ran" would pass even if it drew nothing.
+function Get-DarkPixelCount {
+    param([System.Windows.Media.Imaging.BitmapSource]$Bitmap, [int]$FromY, [int]$Height)
+
+    $converted = New-Object System.Windows.Media.Imaging.FormatConvertedBitmap(
+        $Bitmap, [System.Windows.Media.PixelFormats]::Bgra32, $null, 0)
+    $stride = $converted.PixelWidth * 4
+    $buffer = New-Object byte[] ($stride * $Height)
+    $rect = New-Object System.Windows.Int32Rect(0, $FromY, $converted.PixelWidth, $Height)
+    $converted.CopyPixels($rect, $buffer, $stride, 0)
+
+    $dark = 0
+    for ($i = 0; $i -lt $buffer.Length; $i += 4) {
+        if ($buffer[$i] -lt 128 -and $buffer[$i + 1] -lt 128 -and $buffer[$i + 2] -lt 128) { $dark++ }
+    }
+    return $dark
+}
+
+try {
+    $withCaption = New-BarcodeBitmap -Text '5901234123457' -Format 'EAN-13' -Size 400
+    $noCaption   = New-BarcodeBitmap -Text '5901234123457' -Format 'EAN-13' -Size 400 -NoCaption
+
+    # The caption eats into the bars rather than making the strip taller.
+    if ($withCaption.PixelHeight -eq $noCaption.PixelHeight) {
+        Add-Result "Caption keeps the 1D footprint" "PASS"
+    } else {
+        Add-Result "Caption keeps the 1D footprint" "FAIL" "$($withCaption.PixelHeight) vs $($noCaption.PixelHeight) px"
+    }
+
+    # Bottom band: with a caption the bars stop above it and only glyph strokes
+    # are left, so it holds far less ink than the same band on a -NoCaption code
+    # where full-height bars run to the bottom edge. Both must have SOME ink -
+    # a blank captioned band would mean nothing was drawn at all.
+    $band = [int][Math]::Max(6, [Math]::Round($withCaption.PixelHeight * 0.12))
+    $capInk   = Get-DarkPixelCount -Bitmap $withCaption -FromY ($withCaption.PixelHeight - $band) -Height $band
+    $plainInk = Get-DarkPixelCount -Bitmap $noCaption   -FromY ($noCaption.PixelHeight - $band)   -Height $band
+
+    if ($capInk -gt 0) { Add-Result "1D caption is drawn ($capInk dark px)" "PASS" }
+    else               { Add-Result "1D caption is drawn" "FAIL" "caption band is blank" }
+
+    if ($plainInk -gt ($capInk * 2)) {
+        Add-Result "-NoCaption gives the space back to the bars" "PASS"
+    } else {
+        Add-Result "-NoCaption gives the space back to the bars" "FAIL" "bars $plainInk px vs caption $capInk px - bars did not grow"
+    }
+
+    # 2D codes never get a caption - a QR must be identical either way.
+    $qrPlain   = New-BarcodeBitmap -Text 'caption check' -Format 'QR Code' -Size 300
+    $qrNoCap   = New-BarcodeBitmap -Text 'caption check' -Format 'QR Code' -Size 300 -NoCaption
+    if ($qrPlain.PixelHeight -eq $qrNoCap.PixelHeight -and $qrPlain.PixelHeight -eq $qrPlain.PixelWidth) {
+        Add-Result "2D codes ignore the caption" "PASS"
+    } else {
+        Add-Result "2D codes ignore the caption" "FAIL" "$($qrPlain.PixelWidth)x$($qrPlain.PixelHeight) vs $($qrNoCap.PixelWidth)x$($qrNoCap.PixelHeight)"
+    }
+
+    # Too small to spare the space: the digits are dropped, not the bars.
+    $tiny = New-BarcodeBitmap -Text '5901234123457' -Format 'EAN-13' -Size 60
+    $tinyBand = [int][Math]::Max(4, [Math]::Round($tiny.PixelHeight * 0.12))
+    $tinyInk  = Get-DarkPixelCount -Bitmap $tiny -FromY ($tiny.PixelHeight - $tinyBand) -Height $tinyBand
+    if ($tinyInk -gt 0) {
+        Add-Result "Tiny 1D drops the caption, keeps the bars" "PASS"
+    } else {
+        Add-Result "Tiny 1D drops the caption, keeps the bars" "FAIL" "bottom band is blank - bars were sacrificed"
+    }
+}
+catch {
+    Add-Result "1D caption is drawn" "FAIL" $_.Exception.Message
+}
+
 # Format lookup has to survive the punctuation people actually type.
 if ((Get-BarcodeFormat -Name 'ean-13').Key -eq 'EAN_13' -and
     (Get-BarcodeFormat -Name 'QR Code').Key -eq 'QR_CODE' -and
@@ -899,6 +970,62 @@ try {
 }
 catch {
     Add-Result "Generates with all outbound blocked" "FAIL" $_.Exception.Message
+}
+
+# The picker must be filled from the encoder, not from XAML - a hardcoded list
+# could offer a decode-only symbology, which fails only at click time.
+[GUI_Handler]::Prepare_ComboBoxes()
+$pickerItems = @($Global:cmb_QRCode_Format.Items)
+if ($pickerItems.Count -eq $formats.Count -and $pickerItems.Count -gt 0) {
+    Add-Result "Format picker filled ($($pickerItems.Count) items)" "PASS"
+} else {
+    Add-Result "Format picker filled" "FAIL" "picker has $($pickerItems.Count), encoder offers $($formats.Count)"
+}
+
+if ($Global:cmb_QRCode_Format.SelectedItem -eq 'QR Code') {
+    Add-Result "Format picker defaults to QR" "PASS"
+} else {
+    Add-Result "Format picker defaults to QR" "FAIL" "selected: $($Global:cmb_QRCode_Format.SelectedItem)"
+}
+
+# Every entry in the picker must round-trip back to a real format - this is
+# what breaks if a display name is ever edited in one place only.
+$unresolved = $pickerItems | Where-Object { -not (Get-BarcodeFormat -Name $_) }
+if (-not $unresolved) {
+    Add-Result "Every picker entry resolves to a format" "PASS"
+} else {
+    Add-Result "Every picker entry resolves to a format" "FAIL" "unresolved: $($unresolved -join ', ')"
+}
+
+# Selecting a format must actually drive the render.
+try {
+    $Global:cmb_QRCode_Format.SelectedItem = 'Code 128'
+    $roundTrip = Get-QRCodeSelectedFormat
+    $Global:txt_QRCode_Text.Text = 'PICKER-TEST-123'
+    Update-QRCodePreview -Force
+    $rendered = $Global:img_QRCode.Source
+
+    if ((Get-BarcodeFormat -Name $roundTrip).Key -eq 'CODE_128' -and
+        $rendered -and $rendered.PixelHeight -lt $rendered.PixelWidth) {
+        Add-Result "Picker drives the render (Code 128 strip)" "PASS"
+    } else {
+        Add-Result "Picker drives the render" "FAIL" "format=$roundTrip bitmap=$($rendered.PixelWidth)x$($rendered.PixelHeight)"
+    }
+
+    # Back to QR, and the same payload must now render square.
+    $Global:cmb_QRCode_Format.SelectedItem = 'QR Code'
+    Update-QRCodePreview -Force
+    $qrAgain = $Global:img_QRCode.Source
+    if ($qrAgain -and $qrAgain.PixelWidth -eq $qrAgain.PixelHeight) {
+        Add-Result "Switching format re-renders" "PASS"
+    } else {
+        Add-Result "Switching format re-renders" "FAIL" "got $($qrAgain.PixelWidth)x$($qrAgain.PixelHeight)"
+    }
+
+    $Global:txt_QRCode_Text.Text = ''
+}
+catch {
+    Add-Result "Picker drives the render" "FAIL" $_.Exception.Message
 }
 
 # Regression guard: the old implementation fetched the image from a web API.
