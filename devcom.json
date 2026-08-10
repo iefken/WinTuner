@@ -1,0 +1,25 @@
+{
+  "project": {
+    "slug": "wintuner",
+    "name": "PcManagementTool (WinTuner)",
+    "type": "desktop",
+    "stack": "powershell-wpf"
+  },
+  "vcs": {
+    "remote": "origin",
+    "branch": "main",
+    "sharedTree": true,
+    "worktreePolicy": "per-task",
+    "coAuthorTrailer": "Co-Authored-By: Claude <noreply@anthropic.com>",
+    "_comment": "Local-only port of DHL_DEVICE_MANAGER. The donor repo is read-only from here."
+  },
+  "hosts": {
+    "local": null,
+    "test": null,
+    "production": null,
+    "healthPath": null
+  },
+  "verify": {
+    "smoke": null
+  }
+}
