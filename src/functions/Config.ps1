@@ -34,6 +34,8 @@ Add-Type -AssemblyName 'PresentationFramework'
 Add-Type -AssemblyName 'System.Data'
 Add-Type -AssemblyName 'Microsoft.VisualBasic'   # Recycle Bin deletes (File Cleanup tab)
 Add-Type -AssemblyName 'System.Drawing'          # app-icon extraction (Common apps tiles)
+Add-Type -AssemblyName 'PresentationCore'        # BitmapSource / WriteableBitmap
+Add-Type -AssemblyName 'WindowsBase'
 
 #========================================================================
 # 2. Ensure the log directory exists
@@ -59,3 +61,19 @@ if (-not [String]::IsNullOrEmpty($Global:LogPath) -and -not (Test-Path $Global:L
 #========================================================================
 
 . "$Global:ConfigFiles\src\functions\Import-Functions.ps1"
+
+#========================================================================
+# 5. Bundled third-party assemblies (lib/)
+#
+# ZXing.Net powers the local barcode/QR generator. Loading it here rather
+# than on first use means a missing or blocked DLL is reported in the
+# Activity log at startup instead of surfacing as a dead tab later.
+# A failure is logged, never thrown: one broken tab must not stop the app.
+#========================================================================
+
+try {
+    $null = Import-BarcodeAssemblies
+}
+catch {
+    Add-StartupLog "Barcode library failed to load: $_" 'Red'
+}

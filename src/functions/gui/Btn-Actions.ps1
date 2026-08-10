@@ -1640,102 +1640,191 @@ Function Handle-btn_WU_OpenSettings {
 }
 
 #========================================================================
-# QR Code Generator tab
+# QR Code / barcode tab
+#
+# Generation is local and in-process (ZXing.Net, bundled under lib/), so a
+# render costs well under a millisecond and nothing leaves the machine.
+# That is why there is no Generate button and no debounce timer: every
+# keystroke re-renders, and the image on screen always matches the box.
+#
+# The format is read from $global:cmb_QRCode_Format when that control
+# exists, so adding a symbology picker to the XAML needs no change here.
 #========================================================================
 
-# Generates a QR code from the entered text/URL.
-Function Handle-btn_QRCode_Generate {
+# Returns the format key the UI is asking for. Defaults to QR while the tab
+# has no picker.
+Function Get-QRCodeSelectedFormat {
     try {
-        $text = $global:txt_QRCode_Text.Text.Trim()
-        
+        $combo = $global:cmb_QRCode_Format
+        if ($combo -and $combo.SelectedItem) {
+            $item = $combo.SelectedItem
+            # Works for both a bound Get-BarcodeFormats object and a plain
+            # ComboBoxItem carrying the key in its Tag.
+            if ($item.PSObject.Properties.Name -contains 'Key') { return $item.Key }
+            if ($item.Tag) { return [string]$item.Tag }
+            return [string]$item.Content
+        }
+    }
+    catch { }
+    return 'QR_CODE'
+}
+
+# Reads the size picker, falling back to 300.
+Function Get-QRCodeSelectedSize {
+    try {
+        $sizeItem = $global:cmb_QRCode_Size.SelectedItem
+        if ($sizeItem -and $sizeItem.Tag) { return [int]$sizeItem.Tag }
+    }
+    catch { }
+    return 300
+}
+
+# Writes the status line. -IsError paints it red until the next success, so a
+# rejected payload (wrong digit count for an EAN, say) is impossible to miss.
+Function Set-QRCodeStatus {
+    param(
+        [string]$Message,
+        [switch]$IsError
+    )
+
+    try {
+        if (-not $global:QRCode_StatusBrush) {
+            $global:QRCode_StatusBrush = $global:lbl_QRCode_Status.Foreground
+        }
+        $global:lbl_QRCode_Status.Text = $Message
+        $global:lbl_QRCode_Status.Foreground = if ($IsError) {
+            [System.Windows.Media.Brushes]::IndianRed
+        } else {
+            $global:QRCode_StatusBrush
+        }
+    }
+    catch { }
+}
+
+# Entry point wired to the text box and the size picker.
+Function Start-QRCodeAutoUpdate {
+    Update-QRCodePreview
+}
+
+# Renders the current text at the current size/format into the preview.
+# -Force re-renders even when nothing changed.
+Function Update-QRCodePreview {
+    param([switch]$Force)
+
+    try {
+        $text = $global:txt_QRCode_Text.Text
+        if ($null -eq $text) { $text = '' }
+        $text = $text.Trim()
+
+        $size   = Get-QRCodeSelectedSize
+        $format = Get-QRCodeSelectedFormat
+
+        # Empty box: clear the image rather than leave the previous code on
+        # screen looking like it still belongs to the input.
         if ([String]::IsNullOrWhiteSpace($text)) {
-            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Please enter text or URL to generate QR code", 'Red')
-            $global:lbl_QRCode_Status.Text = "Enter text first"
+            $global:img_QRCode.Source     = $null
+            $global:QRCode_CurrentBitmap  = $null
+            $global:QRCode_LastKey        = ''
+            $global:QRCode_LastError      = ''
+            Set-QRCodeStatus "Ready"
             return
         }
 
-        # Get selected size from ComboBox
-        $sizeItem = $global:cmb_QRCode_Size.SelectedItem
-        $size = if ($sizeItem) { [int]$sizeItem.Tag } else { 300 }
+        # Cheap, but re-encoding on a no-op change (refocus, same keystroke)
+        # is still pointless work on the UI thread.
+        $key = "$format|$size|$text"
+        if (-not $Force -and $key -eq $global:QRCode_LastKey) { return }
 
-        $global:lbl_QRCode_Status.Text = "Generating..."
-        
-        # Generate QR code to temp file
-        $tempPath = Get-QRCodeTempPath
-        $success = New-QRCode -Text $text -OutputPath $tempPath -Size $size
-        
-        if ($success -and (Test-Path $tempPath)) {
-            # Load the image into the WPF Image control
-            $bitmap = [System.Windows.Media.Imaging.BitmapImage]::new()
-            $bitmap.BeginInit()
-            $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
-            $bitmap.UriSource = [System.Uri]::new($tempPath)
-            $bitmap.EndInit()
-            $bitmap.Freeze()
-            
-            $global:img_QRCode.Source = $bitmap
-            $global:QRCodeCurrentPath = $tempPath
-            
-            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "QR code generated successfully", 'Green')
-            $global:lbl_QRCode_Status.Text = "Generated successfully"
-        } else {
-            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed to generate QR code", 'Red')
-            $global:lbl_QRCode_Status.Text = "Generation failed"
-        }
+        $bitmap = New-BarcodeBitmap -Text $text -Format $format -Size $size
+
+        $global:img_QRCode.Source    = $bitmap
+        $global:QRCode_CurrentBitmap = $bitmap
+        $global:QRCode_LastKey       = $key
+        $global:QRCode_LastError     = ''
+        Set-QRCodeStatus "Up to date"
     }
     catch {
-        $errorMsg = $_.Exception.Message
-        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "QR code generation error: $errorMsg", 'Red')
-        $global:lbl_QRCode_Status.Text = "Error occurred"
+        # Invalid payloads are normal while typing (half an EAN is not an EAN),
+        # so the preview is cleared and the reason shown - but the activity log
+        # only hears about each distinct problem once.
+        $message = $_.Exception.Message
+        $global:img_QRCode.Source    = $null
+        $global:QRCode_CurrentBitmap = $null
+        $global:QRCode_LastKey       = ''
+        Set-QRCodeStatus $message -IsError
+
+        if ($message -ne $global:QRCode_LastError) {
+            $global:QRCode_LastError = $message
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Barcode: $message", 'Orange')
+        }
     }
 }
 
-# Saves the current QR code image to a user-selected location.
+# Kept so an immediate render can be asked for by name (Enter key, REPL).
+Function Handle-btn_QRCode_Generate {
+    Update-QRCodePreview -Force
+}
+
+# Saves the displayed code as a PNG.
 Function Handle-btn_QRCode_Save {
     try {
-        if ([String]::IsNullOrEmpty($global:QRCodeCurrentPath) -or -not (Test-Path $global:QRCodeCurrentPath)) {
-            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "No QR code to save - generate one first", 'Red')
-            $global:lbl_QRCode_Status.Text = "Generate QR code first"
+        if (-not $global:QRCode_CurrentBitmap) {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "No code to save - type some text first", 'Red')
+            Set-QRCodeStatus "Nothing to save" -IsError
             return
         }
 
         $dialog = New-Object System.Windows.Forms.SaveFileDialog -Property @{
-            Title            = 'Save QR Code'
+            Title            = 'Save Barcode Image'
             Filter           = 'PNG Image (*.png)|*.png|All Files (*.*)|*.*'
             DefaultExt       = 'png'
+            FileName         = "$((Get-QRCodeSelectedFormat).ToLower()).png"
             InitialDirectory = $global:GUIHandler.InitialFolderPath
         }
 
         if ($dialog.ShowDialog() -eq 'OK') {
-            Copy-Item -Path $global:QRCodeCurrentPath -Destination $dialog.FileName -Force
-            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "QR code saved to $($dialog.FileName)", 'Green')
-            $global:lbl_QRCode_Status.Text = "Saved successfully"
+            # Encoded straight to the chosen path - there is no temp file to
+            # copy from, because nothing is written while you type.
+            $null = Save-BarcodeBitmap -Bitmap $global:QRCode_CurrentBitmap -Path $dialog.FileName
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Barcode saved to $($dialog.FileName)", 'Green')
+            Set-QRCodeStatus "Saved successfully"
         }
     }
     catch {
         $errorMsg = $_.Exception.Message
-        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed to save QR code: $errorMsg", 'Red')
-        $global:lbl_QRCode_Status.Text = "Save failed"
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed to save barcode: $errorMsg", 'Red')
+        Set-QRCodeStatus "Save failed" -IsError
     }
 }
 
-# Opens the current QR code image in the default image viewer.
+# Opens the displayed code in the default image viewer.
 Function Handle-btn_QRCode_Open {
     try {
-        if ([String]::IsNullOrEmpty($global:QRCodeCurrentPath) -or -not (Test-Path $global:QRCodeCurrentPath)) {
-            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "No QR code to open - generate one first", 'Red')
-            $global:lbl_QRCode_Status.Text = "Generate QR code first"
+        if (-not $global:QRCode_CurrentBitmap) {
+            $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "No code to open - type some text first", 'Red')
+            Set-QRCodeStatus "Nothing to open" -IsError
             return
         }
 
-        Start-Process $global:QRCodeCurrentPath
-        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Opened QR code in default viewer", 'Green')
-        $global:lbl_QRCode_Status.Text = "Opened in viewer"
+        # The viewer needs a real file, so this is the one place a temp file is
+        # written - on demand, not once per keystroke. The previous one goes
+        # first so a long session does not litter %TEMP%.
+        if (-not [String]::IsNullOrEmpty($global:QRCodeCurrentPath)) {
+            Remove-Item -LiteralPath $global:QRCodeCurrentPath -Force -ErrorAction SilentlyContinue
+        }
+
+        $tempPath = Get-QRCodeTempPath
+        $null = Save-BarcodeBitmap -Bitmap $global:QRCode_CurrentBitmap -Path $tempPath
+        $global:QRCodeCurrentPath = $tempPath
+
+        Start-Process $tempPath
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Opened barcode in default viewer", 'Green')
+        Set-QRCodeStatus "Opened in viewer"
     }
     catch {
         $errorMsg = $_.Exception.Message
-        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed to open QR code: $errorMsg", 'Red')
-        $global:lbl_QRCode_Status.Text = "Open failed"
+        $global:GUIHandler.Visual_Log($env:COMPUTERNAME, "Failed to open barcode: $errorMsg", 'Red')
+        Set-QRCodeStatus "Open failed" -IsError
     }
 }
 

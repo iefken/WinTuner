@@ -237,15 +237,24 @@ Function Add_Click_listeners {
     # QR Code Generator tab
     #--------------------------------------------------------------------
 
-    $global:btn_QRCode_Generate.add_Click({ Handle-btn_QRCode_Generate })
     $global:btn_QRCode_Save.add_Click({ Handle-btn_QRCode_Save })
     $global:btn_QRCode_Open.add_Click({ Handle-btn_QRCode_Open })
 
-    # Enter in text box triggers generation
+    # No Generate button: encoding is local and sub-millisecond, so every
+    # keystroke re-renders and the image can never lag behind the text.
+    $global:txt_QRCode_Text.Add_TextChanged({ Start-QRCodeAutoUpdate })
+    $global:cmb_QRCode_Size.Add_SelectionChanged({ Start-QRCodeAutoUpdate })
+
+    # A format picker is not in the XAML yet; wire it if one appears.
+    if ($global:cmb_QRCode_Format) {
+        $global:cmb_QRCode_Format.Add_SelectionChanged({ Start-QRCodeAutoUpdate })
+    }
+
+    # Enter forces a re-render (harmless, and keeps the old muscle memory).
     $global:txt_QRCode_Text.Add_KeyDown({
         if ($_.Key -eq 'Enter') {
             $_.Handled = $true
-            Handle-btn_QRCode_Generate
+            Update-QRCodePreview -Force
         }
     })
 

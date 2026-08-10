@@ -1582,9 +1582,8 @@
 
                             <!-- Action buttons row -->
                             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
-                                <Button x:Name="btn_QRCode_Generate" Content="Generate QR Code"
-                                        Style="{StaticResource PrimaryButton}" Width="140" Height="28" />
-                                <Button x:Name="btn_QRCode_Save" Content="Save Image..." Width="110" Height="28" Margin="8,0,0,0" />
+                                <Button x:Name="btn_QRCode_Save" Content="Save Image..."
+                                        Style="{StaticResource PrimaryButton}" Width="110" Height="28" />
                                 <Button x:Name="btn_QRCode_Open" Content="Open in Viewer" Width="120" Height="28" Margin="8,0,0,0" />
                                 <TextBlock x:Name="lbl_QRCode_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
                             </StackPanel>
@@ -1601,7 +1600,7 @@
                             </Border>
 
                             <TextBlock Grid.Row="3" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
-                                       Text="Enter any text or URL above and click 'Generate QR Code' to create a scannable QR code. You can then save it as an image or open it in your default image viewer. Scan with any smartphone camera or QR code reader app." />
+                                       Text="The code redraws as you type, so what you see always matches the box above. Save it as a PNG or open it in your default image viewer, and scan with any phone camera. Generated entirely on this machine - nothing is uploaded and no internet connection is needed." />
                         </Grid>
                     </TabItem>
 

@@ -90,6 +90,36 @@ Bootstrap + shared infra + first features are in place and pass `Test-DevStartup
   with an explicit height anyway; the two lower rows are star-sized with `MinHeight`, so growing one shrinks
   its neighbour instead of pushing the footer off the tab.
 
+- **QR / barcode generator (done, rewritten):** **Tools → QR Code** — type in the box and the code redraws
+  on every keystroke; there is no Generate button. Encoding is **100% local and in-process** via
+  **ZXing.Net** (Apache-2.0), committed under `lib/` — see `lib/README.md` for version, hashes and how to
+  replace it. The original implementation GET'd `api.qrserver.com`, which meant the payload left the machine,
+  a render needed internet, and the UI thread blocked on HTTP; all three are gone.
+
+  Logic lives in `src/functions/Barcode-Functions.ps1` (`Get-BarcodeFormats`, `Get-BarcodeFormat`,
+  `Import-BarcodeAssemblies`, `New-BarcodeBitmap`, `Test-BarcodeText`, `Save-BarcodeBitmap`, plus
+  `New-QRCode` / `Show-QRCode` / `Get-QRCodeTempPath` kept for file-based and REPL callers). It is written
+  **format-first, not QR-first**: 14 symbologies already encode (QR, Aztec, Data Matrix, PDF417, Code
+  128/39/93, Codabar, EAN-8/13, UPC-A/E, ITF, MSI). Covered by Step 16 of `Test-DevStartup.ps1`, which
+  encodes every advertised format and re-renders with the default proxy pointed at a closed port.
+
+  - **The UI has no format picker yet** — `Get-QRCodeSelectedFormat` reads `$global:cmb_QRCode_Format` and
+    falls back to QR when that control does not exist, so adding the dropdown is a XAML-only change.
+  - ZXing's `BarcodeFormat` enum contains **decode-only** members (`MAXICODE`, `RSS_14`, `RSS_EXPANDED`,
+    `IMB`, `PHARMA_CODE`, `All_1D`, `UPC_EAN_EXTENSION`). Offering one in the UI earns a runtime
+    "No encoder available for format X", so `$script:BarcodeFormats` lists only what actually writes.
+  - `zxing.presentation.dll` is what makes `ZXing.Presentation.BarcodeWriter` return a WPF `WriteableBitmap`.
+    Without it the only renderer is the `System.Drawing` one — a `Bitmap` → PNG → `BitmapImage` round-trip
+    through a temp file on every keystroke. **Nothing is written to disk while typing**; Save encodes
+    straight to the chosen path and Open writes one temp file on demand.
+  - 1D codes render as a strip (`Size` × `0.45`), not a square, and carry their payload as text underneath
+    (`PureBarcode = $false`); 2D codes stay square and clean.
+  - **`install.ps1` delivers this app as a downloaded ZIP, so every extracted file carries a mark-of-the-web
+    stream and `Add-Type` refuses to load a blocked assembly.** `Import-BarcodeAssemblies` runs
+    `Unblock-File` over `lib\*.dll` before loading them. Config.ps1 calls it at startup so a missing or
+    blocked DLL shows up in the Activity log at launch instead of as a dead tab later — and it *logs*
+    rather than throws, because one broken tab must not stop the app.
+
 - **Bootable USB (stub):** **Tools → Bootable USB** (`tab_BootUSB`) is a placeholder only — no handlers, no
   logic. Intended scope: list removable drives, install/update **Ventoy** on the selected stick, manage the
   ISOs on it. Two things to settle before building it: every write must confirm against a named target drive
@@ -198,10 +228,11 @@ Main.ps1
  └─ dot-sources Config.ps1
      ├─ Add-Type for required .NET assemblies (System.Windows.Forms, PresentationFramework, …)
      ├─ Load-XamlForm.ps1            # parses the WPF XAML
-     └─ Import-Functions.ps1         # dynamic loader
-         ├─ loads every *.ps1 in src/functions/ (root) except the loaders themselves
-         └─ recursively loads src/functions/**/*.ps1, skipping ignored folders
-            (backup, old, standalone, …)
+     ├─ Import-Functions.ps1         # dynamic loader
+     │   ├─ loads every *.ps1 in src/functions/ (root) except the loaders themselves
+     │   └─ recursively loads src/functions/**/*.ps1, skipping ignored folders
+     │      (backup, old, standalone, …)
+     └─ Import-BarcodeAssemblies     # bundled lib/*.dll (ZXing.Net) - logs, never throws
  └─ instantiates $global:GUIHandler and calls .Launch_GUI()
 ```
 

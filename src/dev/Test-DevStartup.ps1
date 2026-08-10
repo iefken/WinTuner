@@ -776,6 +776,163 @@ catch {
 }
 
 #========================================================================
+# Step 16 - Barcode / QR generation (bundled ZXing.Net, fully local)
+#
+# The point of this step is that generation NEVER touches the network, so
+# it also renders with the default proxy pointed at a closed port.
+#========================================================================
+
+Write-Step "Step 16 - Barcode / QR generation"
+
+@('txt_QRCode_Text', 'cmb_QRCode_Size', 'btn_QRCode_Save', 'btn_QRCode_Open',
+  'img_QRCode', 'lbl_QRCode_Status') | ForEach-Object {
+    $ctrl = Get-Variable -Name $_ -Scope Global -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $ctrl) { Add-Result "Control: `$$_" "PASS" }
+    else                 { Add-Result "Control: `$$_" "FAIL" "Not exposed by Load-XamlForm.ps1" }
+}
+
+@('Get-BarcodeFormats', 'Get-BarcodeFormat', 'Import-BarcodeAssemblies', 'New-BarcodeBitmap',
+  'Test-BarcodeText', 'Save-BarcodeBitmap', 'New-QRCode', 'Show-QRCode', 'Get-QRCodeTempPath',
+  'Update-QRCodePreview', 'Start-QRCodeAutoUpdate', 'Set-QRCodeStatus',
+  'Get-QRCodeSelectedFormat', 'Get-QRCodeSelectedSize',
+  'Handle-btn_QRCode_Save', 'Handle-btn_QRCode_Open') | ForEach-Object {
+    if (Get-Command $_ -ErrorAction SilentlyContinue) { Add-Result "Function: $_" "PASS" }
+    else                                              { Add-Result "Function: $_" "FAIL" "Not loaded" }
+}
+
+# The DLLs are committed on purpose - the feature has to work with no network.
+foreach ($dll in @('zxing.dll', 'zxing.presentation.dll')) {
+    $dllPath = Join-Path $Global:ConfigFiles "lib\$dll"
+    if (Test-Path -LiteralPath $dllPath) { Add-Result "Bundled: lib\$dll" "PASS" }
+    else                                 { Add-Result "Bundled: lib\$dll" "FAIL" "Missing - barcode tab will be dead" }
+}
+
+try {
+    if (Import-BarcodeAssemblies) { Add-Result "ZXing assemblies load" "PASS" }
+    else                          { Add-Result "ZXing assemblies load" "FAIL" "Import-BarcodeAssemblies returned false" }
+}
+catch {
+    Add-Result "ZXing assemblies load" "FAIL" $_.Exception.Message
+}
+
+# Every advertised format must actually encode. ZXing's enum also lists
+# decode-only symbologies, and offering one of those in the UI would be a
+# guaranteed "No encoder available for format X".
+$formats = @(Get-BarcodeFormats)
+if ($formats.Count -gt 0) { Add-Result "Barcode formats listed ($($formats.Count))" "PASS" }
+else                      { Add-Result "Barcode formats listed" "FAIL" "none returned" }
+
+$samples = @{
+    'EAN_13' = '5901234123457'; 'EAN_8' = '96385074'; 'UPC_A' = '036000291452'
+    'UPC_E'  = '01234565';      'ITF'   = '1234567890'; 'CODABAR' = 'A12345A'
+    'MSI'    = '1234';          'CODE_39' = 'ABC123';   'CODE_93' = 'ABC123'
+}
+$badFormats = @()
+foreach ($fmt in $formats) {
+    $sample = if ($samples.ContainsKey($fmt.Key)) { $samples[$fmt.Key] } else { 'https://example.com' }
+    try {
+        $bmp = New-BarcodeBitmap -Text $sample -Format $fmt.Key -Size 200
+        if (-not $bmp -or $bmp.PixelWidth -lt 1) { $badFormats += "$($fmt.Key) (empty bitmap)" }
+    }
+    catch { $badFormats += "$($fmt.Key): $($_.Exception.Message)" }
+}
+if ($badFormats.Count -eq 0) { Add-Result "All $($formats.Count) formats encode" "PASS" }
+else                         { Add-Result "All formats encode" "FAIL" ($badFormats -join '; ') }
+
+# 1D codes must come out as a strip, not a square.
+try {
+    $qr   = New-BarcodeBitmap -Text 'test' -Format 'QR_CODE'  -Size 300
+    $code = New-BarcodeBitmap -Text 'test' -Format 'CODE_128' -Size 300
+    if ($qr.PixelWidth -eq $qr.PixelHeight -and $code.PixelHeight -lt $code.PixelWidth) {
+        Add-Result "2D square / 1D strip aspect" "PASS"
+    } else {
+        Add-Result "2D square / 1D strip aspect" "FAIL" "QR $($qr.PixelWidth)x$($qr.PixelHeight), Code128 $($code.PixelWidth)x$($code.PixelHeight)"
+    }
+}
+catch {
+    Add-Result "2D square / 1D strip aspect" "FAIL" $_.Exception.Message
+}
+
+# Format lookup has to survive the punctuation people actually type.
+if ((Get-BarcodeFormat -Name 'ean-13').Key -eq 'EAN_13' -and
+    (Get-BarcodeFormat -Name 'QR Code').Key -eq 'QR_CODE' -and
+    $null -eq (Get-BarcodeFormat -Name 'not-a-format')) {
+    Add-Result "Format lookup by key/display/loose" "PASS"
+} else {
+    Add-Result "Format lookup by key/display/loose" "FAIL" "lookup did not resolve as expected"
+}
+
+# Bad input must come back as a message, not an exception in the caller.
+$check = Test-BarcodeText -Text 'NOTANEAN' -Format 'EAN-13'
+if (-not $check.IsValid -and $check.Message -match 'EAN') {
+    Add-Result "Invalid payload reported, not thrown" "PASS"
+} else {
+    Add-Result "Invalid payload reported, not thrown" "FAIL" "got IsValid=$($check.IsValid) msg=$($check.Message)"
+}
+
+# PNG round-trip through the same path the Save button uses.
+try {
+    $pngPath = Join-Path ([System.IO.Path]::GetTempPath()) "wintuner_bctest_$([Guid]::NewGuid().ToString('N')).png"
+    $saved = Save-BarcodeBitmap -Bitmap (New-BarcodeBitmap -Text 'round trip' -Size 200) -Path $pngPath
+    $bytes = if (Test-Path $pngPath) { (Get-Item $pngPath).Length } else { 0 }
+    Remove-Item -LiteralPath $pngPath -Force -ErrorAction SilentlyContinue
+    if ($saved -and $bytes -gt 0) { Add-Result "PNG save round-trip ($bytes bytes)" "PASS" }
+    else                          { Add-Result "PNG save round-trip" "FAIL" "no file written" }
+}
+catch {
+    Add-Result "PNG save round-trip" "FAIL" $_.Exception.Message
+}
+
+# The whole reason this was rewritten: it must work with no way out to the
+# internet. Point the default proxy at a closed port and encode again.
+try {
+    $savedProxy = [System.Net.WebRequest]::DefaultWebProxy
+    [System.Net.WebRequest]::DefaultWebProxy = New-Object System.Net.WebProxy('http://127.0.0.1:9')
+    try {
+        $offline = New-BarcodeBitmap -Text 'no network here' -Size 200
+        if ($offline -and $offline.PixelWidth -gt 0) { Add-Result "Generates with all outbound blocked" "PASS" }
+        else                                         { Add-Result "Generates with all outbound blocked" "FAIL" "no bitmap" }
+    }
+    finally {
+        [System.Net.WebRequest]::DefaultWebProxy = $savedProxy
+    }
+}
+catch {
+    Add-Result "Generates with all outbound blocked" "FAIL" $_.Exception.Message
+}
+
+# Regression guard: the old implementation fetched the image from a web API.
+# This walks the parsed AST rather than grepping the text - the file documents
+# that history in its comments and help blocks, and a guard that trips over its
+# own documentation is worse than no guard.
+try {
+    $barcodePath = Join-Path $Global:ConfigFiles 'src\functions\Barcode-Functions.ps1'
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($barcodePath, [ref]$null, [ref]$null)
+
+    $netCmdlets = @('Invoke-WebRequest', 'Invoke-RestMethod', 'Start-BitsTransfer', 'wget', 'curl', 'iwr', 'irm')
+    $calls = $ast.FindAll({
+        param($node)
+        $node -is [System.Management.Automation.Language.CommandAst]
+    }, $true) | Where-Object { $netCmdlets -contains $_.GetCommandName() }
+
+    # Executable code only - a URL inside a help block is prose, not a call.
+    $netTypes = $ast.FindAll({
+        param($node)
+        $node -is [System.Management.Automation.Language.TypeExpressionAst]
+    }, $true) | Where-Object { $_.TypeName.FullName -match '^System\.Net\.(WebClient|Http)' }
+
+    if (-not $calls -and -not $netTypes) {
+        Add-Result "No outbound call in Barcode-Functions.ps1" "PASS"
+    } else {
+        $where = @($calls.GetCommandName()) + @($netTypes.TypeName.FullName) -join ', '
+        Add-Result "No outbound call in Barcode-Functions.ps1" "FAIL" "network use: $where"
+    }
+}
+catch {
+    Add-Result "No outbound call in Barcode-Functions.ps1" "FAIL" $_.Exception.Message
+}
+
+#========================================================================
 # Summary
 #========================================================================
 
