@@ -210,12 +210,22 @@ $desktopPath = [Environment]::GetFolderPath("Desktop")
 $shortcutPath = "$desktopPath\WinTuner.lnk"
 $wshShell = New-Object -ComObject WScript.Shell
 
+# The shortcut targets powershell.exe, so without an explicit icon Windows
+# shows the PowerShell logo on the desktop and in the Start Menu. Point it
+# at the app's own .ico (index 0) instead.
+$shortcutIcon = Join-Path $installDir 'wintuner.ico'
+if (-not (Test-Path $shortcutIcon)) {
+    Write-Warning "Icon not found at $shortcutIcon - shortcuts will use the PowerShell icon"
+    $shortcutIcon = $null
+}
+
 try {
     $shortcut = $wshShell.CreateShortcut($shortcutPath)
     $shortcut.TargetPath = "powershell.exe"
     $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$installDir\Main.ps1`""
     $shortcut.WorkingDirectory = $installDir
     $shortcut.Description = "WinTuner - Windows PC Management Tool"
+    if ($shortcutIcon) { $shortcut.IconLocation = "$shortcutIcon,0" }
     $shortcut.Save()
     Write-Host "Desktop shortcut created" -ForegroundColor Green
 }
@@ -233,6 +243,7 @@ try {
     $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$installDir\Main.ps1`""
     $shortcut.WorkingDirectory = $installDir
     $shortcut.Description = "WinTuner - Windows PC Management Tool"
+    if ($shortcutIcon) { $shortcut.IconLocation = "$shortcutIcon,0" }
     $shortcut.Save()
     Write-Host "Start Menu shortcut created" -ForegroundColor Green
 }

@@ -39,12 +39,22 @@ if (Test-Path $iconPath) {
         # WPF's Window.Icon is an ImageSource — a System.Drawing.Icon won't cast.
         # OnLoad caching + Freeze so the file isn't kept locked and the source is
         # safe to reuse from any thread.
-        $iconImage = New-Object System.Windows.Media.Imaging.BitmapImage
-        $iconImage.BeginInit()
-        $iconImage.UriSource   = New-Object System.Uri (Resolve-Path -LiteralPath $iconPath).Path
-        $iconImage.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
-        $iconImage.EndInit()
-        $iconImage.Freeze()
+        #
+        # wintuner.ico is multi-frame (16 → 256 px). BitmapImage would pick one
+        # frame for us with no say in which, so decode explicitly and hand WPF
+        # the LARGEST frame: Windows derives both the title-bar icon and the
+        # bigger taskbar/Alt-Tab icon from this one source, and downscaling a
+        # large frame looks far better than blowing up a small one.
+        $iconUri = New-Object System.Uri (Resolve-Path -LiteralPath $iconPath).Path
+        $decoder = [System.Windows.Media.Imaging.BitmapDecoder]::Create(
+            $iconUri,
+            [System.Windows.Media.Imaging.BitmapCreateOptions]::None,
+            [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
+
+        $iconImage = $decoder.Frames | Sort-Object PixelWidth -Descending | Select-Object -First 1
+        if ($null -eq $iconImage) { throw "No image frames found in $iconPath" }
+
+        if (-not $iconImage.IsFrozen) { $iconImage.Freeze() }
 
         $Global:Form.Icon = $iconImage
     }

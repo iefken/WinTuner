@@ -145,8 +145,20 @@ Notes:
   (`[System.Windows.Window]::GetWindow($s)`) or park it in a `$global:`.
 
 - **`Window.Icon` is a WPF `ImageSource`, not a `System.Drawing.Icon`.** `ExtractAssociatedIcon` output
-  won't cast — load the `.ico` into a `BitmapImage` with `CacheOption = OnLoad` (so the file isn't left
-  locked) and `Freeze()` it. See `src/functions/startup/Load-XamlForm.ps1`.
+  won't cast — decode the `.ico` with `BitmapDecoder.Create(..., OnLoad)` (so the file isn't left locked),
+  take the largest frame and `Freeze()` it. See `src/functions/startup/Load-XamlForm.ps1`.
+
+- **`Window.Icon` alone does NOT fix the taskbar button.** Windows identifies the button by
+  AppUserModelID, which defaults to the host process — so a WPF window hosted by `powershell.exe` gets
+  PowerShell's icon in the taskbar and Alt-Tab no matter what the window icon says. `Main.ps1` calls
+  `SetCurrentProcessExplicitAppUserModelID('Ief.WinTuner')` **before the first window exists**; after that
+  the taskbar uses our own icon and groups only WinTuner windows. The desktop / Start Menu shortcuts are a
+  third, separate thing — they target `powershell.exe`, so `install.ps1` sets `IconLocation` on both.
+
+- **Ship a multi-size `.ico`.** `create-icon-v2.ps1` regenerates `wintuner.ico` with 16/24/32/48/64/128/256
+  frames (each rendered at its own size, stored as PNG). A single 32×32 frame was smeared everywhere except
+  the title bar. Note the PS 5.1 trap in that script: a function returning `[byte[]]` gets unrolled into an
+  `Object[]`, which `BinaryWriter.Write()` mangles into a 1-byte write — cast back with `[byte[]](...)`.
 
 ### Search → Preset → Command tab pattern
 

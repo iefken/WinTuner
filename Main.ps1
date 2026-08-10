@@ -36,6 +36,33 @@ else {
     Clear-Host
 }
 
+#========================================================================
+# Taskbar identity
+#
+# Without this, Windows identifies the taskbar button by the host process
+# (powershell.exe) and paints it with PowerShell's icon, no matter what
+# Window.Icon says. Giving the process its own AppUserModelID detaches it
+# from PowerShell, so the button (and Alt-Tab, and jump list) uses our own
+# window icon and groups only WinTuner windows together.
+#
+# Must be called BEFORE the first window is created.
+#========================================================================
+
+$Global:AppUserModelId = 'Ief.WinTuner'
+
+try {
+    $appIdSig = @'
+[DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+public static extern int SetCurrentProcessExplicitAppUserModelID(string AppID);
+'@
+    $null = Add-Type -MemberDefinition $appIdSig -Name 'AppId' -Namespace 'Win32' -PassThru
+    [Win32.AppId]::SetCurrentProcessExplicitAppUserModelID($Global:AppUserModelId) | Out-Null
+}
+catch {
+    # Cosmetic only: a failure here just means the taskbar keeps the
+    # PowerShell icon. Never worth blocking startup over.
+}
+
 # Fatal-error popup for anything that goes wrong before the GUI is up.
 function Show-FatalError {
     param([string]$Message)
