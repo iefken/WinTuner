@@ -90,7 +90,7 @@ Bootstrap + shared infra + first features are in place and pass `Test-DevStartup
   with an explicit height anyway; the two lower rows are star-sized with `MinHeight`, so growing one shrinks
   its neighbour instead of pushing the footer off the tab.
 
-- **QR / barcode generator (done, rewritten):** **Tools → QR Code** — type in the box and the code redraws
+- **QR / barcode generator (done, rewritten):** **Tools → QR / Barcode** (`tab_QRCode`) — type in the box and the code redraws
   on every keystroke; there is no Generate button. Encoding is **100% local and in-process** via
   **ZXing.Net** (Apache-2.0), committed under `lib/` — see `lib/README.md` for version, hashes and how to
   replace it. The original implementation GET'd `api.qrserver.com`, which meant the payload left the machine,

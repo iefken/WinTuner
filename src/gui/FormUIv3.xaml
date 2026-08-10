@@ -1547,9 +1547,9 @@
                 </TabItem.Header>
                 <TabControl Margin="0" Padding="0" BorderThickness="0">
                     <!-- QR Code Generator -->
-                    <TabItem x:Name="tab_QRCode" ToolTip="Generate QR codes from text or URLs">
+                    <TabItem x:Name="tab_QRCode" ToolTip="Generate QR codes and barcodes from text or numbers">
                         <TabItem.Header>
-                            <TextBlock Text="QR Code" />
+                            <TextBlock Text="QR / Barcode" />
                         </TabItem.Header>
                         <Grid Margin="12">
                             <Grid.RowDefinitions>
