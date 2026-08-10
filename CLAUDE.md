@@ -67,7 +67,7 @@ Bootstrap + shared infra + first features are in place and pass `Test-DevStartup
   `DispatcherTimer` (same pattern as Diagnostics) and disable the tab's buttons while in flight; Search and
   Get Installed stay synchronous. Covered by Step 13 of `Test-DevStartup.ps1`.
 
-- **Hardware Info (done):** **Tools → Hardware Info** tab — read-only local inventory in three grids:
+- **Hardware Info (done):** **System Info → Hardware Info** tab — read-only local inventory in three grids:
   display adapters (VRAM, vendor, driver + date, current mode), **CPU & memory**, and system/motherboard/BIOS
   details. Buttons: Scan Hardware / Copy to Clipboard / Save Report (timestamped file under `logs\hardware\`).
   Scanning is **manual** — nothing runs at startup. Logic lives in `src/functions/Hardware-Functions.ps1`
@@ -89,6 +89,12 @@ Bootstrap + shared infra + first features are in place and pass `Test-DevStartup
   The GPU row stays `Auto` — it starts exactly as tall as the adapters it holds, and a drag replaces that
   with an explicit height anyway; the two lower rows are star-sized with `MinHeight`, so growing one shrinks
   its neighbour instead of pushing the footer off the tab.
+
+- **Bootable USB (stub):** **Tools → Bootable USB** (`tab_BootUSB`) is a placeholder only — no handlers, no
+  logic. Intended scope: list removable drives, install/update **Ventoy** on the selected stick, manage the
+  ISOs on it. Two things to settle before building it: every write must confirm against a named target drive
+  (this formats a disk), and fetching the Ventoy release itself is an outbound call — the only other one in
+  the app is the update check, so decide deliberately rather than drifting past the local-only boundary.
 
 Remaining phases (repo comparer, storage rewrite) follow the proven donor layout — build into this shape
 unless we explicitly decide to diverge.

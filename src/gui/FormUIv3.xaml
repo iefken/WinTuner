@@ -711,12 +711,12 @@
         <!-- ============ Feature tabs (grouped by category) ============ -->
         <TabControl x:Name="tbc_Main" Grid.Row="2" Margin="16,0,16,0" Padding="0">
 
-            <!-- ===================== System Tweaks ===================== -->
+            <!-- ===================== System Info ===================== -->
             <TabItem x:Name="tab_System" ToolTip="System settings and tools">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#x1F5A5;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="System Tweaks" VerticalAlignment="Center" />
+                        <TextBlock Text="System Info" VerticalAlignment="Center" />
                     </StackPanel>
                 </TabItem.Header>
                 <TabControl Margin="0" Padding="0" BorderThickness="0">
@@ -1017,10 +1017,149 @@
                         </Grid>
                     </TabItem>
 
-                    <!-- Local PS -->
-                    <TabItem x:Name="tab_LocalPS" ToolTip="Run PowerShell on this machine">
+                    <!-- Hardware Info -->
+                    <TabItem x:Name="tab_Hardware" ToolTip="Graphics card, CPU, memory and motherboard details">
                         <TabItem.Header>
-                            <TextBlock Text="Local PS" />
+                            <TextBlock Text="Hardware Info" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <!-- A GridSplitter sits between the tables, so dragging a handle
+                                 grows one table and shrinks its neighbour rather than pushing
+                                 the footer off the tab. The GPU row stays Auto so it starts
+                                 exactly as tall as the adapters it holds - a splitter drag
+                                 replaces that with an explicit height anyway. The two lower
+                                 weights are only starting proportions; MinHeight stops a drag
+                                 from collapsing a grid to nothing. -->
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" MinHeight="60" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*"    MinHeight="70" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="1.3*" MinHeight="70" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Action buttons -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="btn_HW_Refresh" Content="Scan Hardware"
+                                        Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
+                                <Button x:Name="btn_HW_Copy" Content="Copy to Clipboard" Width="140" Height="28" Margin="8,0,0,0" />
+                                <Button x:Name="btn_HW_Save" Content="Save Report..." Width="120" Height="28" Margin="8,0,0,0" />
+                                <TextBlock x:Name="lbl_HW_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </StackPanel>
+
+                            <!-- Graphics adapters -->
+                            <GroupBox Grid.Row="1" Header="Graphics adapters"
+                                      ToolTip="VRAM comes from the display driver's own registry key, so cards larger than 4 GB report their true size (WMI's AdapterRAM is a UInt32 and caps at ~4095 MB). Integrated GPUs share system memory and may report their fallback allocation instead.">
+                                <DataGrid x:Name="dgr_HW_Gpu" Margin="4"
+                                          AutoGenerateColumns="False" IsReadOnly="True"
+                                          CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                                          HeadersVisibility="Column">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Adapter"     Binding="{Binding Name}"       Width="2*" />
+                                        <DataGridTextColumn Header="VRAM"        Binding="{Binding VRAM}"       Width="90" />
+                                        <DataGridTextColumn Header="Vendor"      Binding="{Binding Vendor}"     Width="120" />
+                                        <DataGridTextColumn Header="Driver"      Binding="{Binding Driver}"     Width="110" />
+                                        <DataGridTextColumn Header="Driver date" Binding="{Binding DriverDate}" Width="90" />
+                                        <DataGridTextColumn Header="Mode"        Binding="{Binding Mode}"       Width="*" />
+                                        <DataGridTextColumn Header="Status"      Binding="{Binding Status}"     Width="60" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </GroupBox>
+
+                            <GridSplitter Grid.Row="2" Style="{StaticResource RowSplitter}" />
+
+                            <!-- CPU + memory, with matching items collapsed into one row -->
+                            <GroupBox Grid.Row="3" Header="CPU &amp; memory"
+                                      ToolTip="Identical processors and memory modules are shown as a single row. Click the caret to list them individually.">
+                                <DataGrid x:Name="dgr_HW_CpuMem" Margin="4"
+                                          AutoGenerateColumns="False" IsReadOnly="True"
+                                          CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                                          HeadersVisibility="Column">
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="" Width="26" CanUserSort="False">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Style="{StaticResource CaretButton}"
+                                                            Content="{Binding Caret}"
+                                                            ToolTip="Show / hide the individual items" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="90" />
+                                        <DataGridTextColumn Header="Item"     Binding="{Binding Item}"     Width="2*" />
+                                        <DataGridTextColumn Header="Value"    Binding="{Binding Value}"    Width="3*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </GroupBox>
+
+                            <GridSplitter Grid.Row="4" Style="{StaticResource RowSplitter}" />
+
+                            <!-- Board / BIOS / machine details -->
+                            <GroupBox Grid.Row="5" Header="System details">
+                                <DataGrid x:Name="dgr_HW_Details" Margin="4"
+                                          AutoGenerateColumns="False" IsReadOnly="True"
+                                          CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                                          HeadersVisibility="Column">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="120" />
+                                        <DataGridTextColumn Header="Item"     Binding="{Binding Item}"     Width="170" />
+                                        <DataGridTextColumn Header="Value"    Binding="{Binding Value}"    Width="*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </GroupBox>
+
+                            <TextBlock Grid.Row="6" Margin="0,6,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="Read-only scan of this machine. Nothing here changes any setting. Drag the dividers to resize the tables." />
+                        </Grid>
+                    </TabItem>
+
+                    <!-- COM Ports -->
+                    <TabItem x:Name="tab_COM" ToolTip="Watch serial/COM devices connect and disconnect">
+                        <TabItem.Header>
+                            <TextBlock Text="COM Ports" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="120" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Controls -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="btn_COM_Start"   Content="Start monitoring"
+                                        Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
+                                <Button x:Name="btn_COM_Stop"    Content="Stop" Width="70" Height="28" Margin="8,0,0,0" />
+                                <Button x:Name="btn_COM_Refresh" Content="List now" Width="90" Height="28" Margin="8,0,0,0" />
+                                <CheckBox x:Name="chk_COM_Beep" Content="Beep on change" VerticalAlignment="Center" Margin="16,0,0,0" />
+                                <TextBlock x:Name="lbl_COM_Status" Text="Idle." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
+                            </StackPanel>
+
+                            <!-- Event/port grid -->
+                            <DataGrid x:Name="dgr_COM_Results" Grid.Row="1"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Time"         Binding="{Binding Time}"         Width="80" />
+                                    <DataGridTextColumn Header="Event"        Binding="{Binding Event}"        Width="80" />
+                                    <DataGridTextColumn Header="COM"          Binding="{Binding COM}"          Width="70" />
+                                    <DataGridTextColumn Header="Name"         Binding="{Binding Name}"         Width="2*" />
+                                    <DataGridTextColumn Header="Manufacturer" Binding="{Binding Manufacturer}" Width="*" />
+                                    <DataGridTextColumn Header="PNP device ID" Binding="{Binding PNPDeviceID}" Width="2*" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <TextBlock Grid.Row="2" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
+                                       Text="Polls every 2s while monitoring. PRESENT = already connected at start; ADDED/REMOVED = changes since." />
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Storage Cleanup -->
+                    <TabItem x:Name="tab_FileCleanup" ToolTip="Find and remove files in a folder">
+                        <TabItem.Header>
+                            <TextBlock Text="Storage Cleanup" />
                         </TabItem.Header>
                         <Grid Margin="12">
                             <Grid.RowDefinitions>
@@ -1028,53 +1167,71 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="5" />
                                 <RowDefinition Height="*" MinHeight="120" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                            <!-- Search + description picker -->
+                            <!-- Folder row -->
                             <Grid Grid.Row="0" Margin="0,0,0,6">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="180" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Label    Grid.Column="0" Content="Folder:" VerticalAlignment="Center" />
+                                <ComboBox x:Name="cmb_FC_Path" Grid.Column="1" Margin="6,0" IsEditable="True"
+                                          VerticalAlignment="Center" ToolTip="Pick a preset or type/paste a folder path" />
+                                <Button   x:Name="btn_FC_Browse" Grid.Column="2" Content="Browse..." Width="90" Height="26" />
+                            </Grid>
+
+                            <!-- Filter row -->
+                            <Grid Grid.Row="1" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="220" />
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <Label   Grid.Column="0" Content="Search:" VerticalAlignment="Center" />
-                                <TextBox x:Name="cmb_LocalPS" Grid.Column="1" VerticalAlignment="Center"
-                                         ToolTip="Type to filter the preset list" />
-                                <Label   Grid.Column="2" Content="Preset:" Margin="12,0,0,0" VerticalAlignment="Center" />
-                                <ComboBox x:Name="cmb_LocalPS_Desc" Grid.Column="3" Margin="6,0,0,0"
-                                          IsEditable="False" IsTextSearchEnabled="False" VerticalAlignment="Center" />
+                                <Label   Grid.Column="0" Content="Name contains:" VerticalAlignment="Center" />
+                                <TextBox x:Name="txt_FC_Filter" Grid.Column="1" Margin="6,0" VerticalAlignment="Center"
+                                         ToolTip="Blank = every file. Plain text = name CONTAINS that text. Use * (any chars) or ? (one char) for explicit wildcards." />
+                                <CheckBox x:Name="chk_FC_Recurse" Grid.Column="2" Content="Include subfolders"
+                                          Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <CheckBox x:Name="chk_FC_Recycle" Grid.Column="3" Content="Send to Recycle Bin (recommended)"
+                                          Margin="16,0,0,0" VerticalAlignment="Center" IsChecked="True"
+                                          ToolTip="Checked: files go to the Recycle Bin (recoverable). Unchecked: permanent delete, no undo.&#10;Note: Windows still permanently deletes files on network shares, removable/USB drives, or any file larger than the Recycle Bin's size limit - even when this is checked." />
                             </Grid>
 
-                            <!-- Command editor -->
-                            <Label   Grid.Row="1" Content="Command:" />
-                            <TextBox x:Name="cmb_LocalPS_Command" Grid.Row="2"
-                                     Height="90" AcceptsReturn="True" TextWrapping="Wrap"
-                                     VerticalContentAlignment="Top"
-                                     VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas"
-                                     ToolTip="Enter = run, Shift+Enter = newline" />
+                            <!-- Matching-rules hint (always visible) -->
+                            <TextBlock Grid.Row="2" Margin="0,0,0,6" Foreground="{StaticResource Text.Faint}" TextWrapping="Wrap"
+                                       Text="Preview lists files in the folder above whose name matches 'Name contains' (blank = all; plain text = contains; * / ? = wildcards), searching subfolders only when 'Include subfolders' is ticked." />
 
-                            <!-- Run row -->
-                            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8">
-                                <Button x:Name="btn_Run_LocalPS" Content="Run command"
-                                        Style="{StaticResource PrimaryButton}" Width="120" Height="28" />
-                                <Button x:Name="btn_Clear_LocalPS" Content="Clear output" Width="110" Height="28" Margin="8,0,0,0" />
-                                <TextBlock Text="Runs in this app's PowerShell session. Use $global: vars to keep values between commands."
-                                           VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Text.Faint}" />
+                            <!-- Action row -->
+                            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="btn_FC_Preview" Content="Preview"
+                                        Style="{StaticResource PrimaryButton}" Width="110" Height="28" />
+                                <Button x:Name="btn_FC_Delete"  Content="Delete listed"
+                                        Style="{StaticResource DangerButton}" Width="120" Height="28" Margin="8,0,0,0" />
+                                <TextBlock x:Name="lbl_FC_Count" Text="No preview yet."
+                                           VerticalAlignment="Center" Margin="14,0,0,0" Foreground="{StaticResource Text.Muted}" />
                             </StackPanel>
 
-                            <GridSplitter Grid.Row="4" Height="5" HorizontalAlignment="Stretch"
-                                          ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" />
+                            <!-- Results grid -->
+                            <DataGrid x:Name="dgr_FC_Results" Grid.Row="4"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                                      HeadersVisibility="Column" SelectionMode="Extended">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="#"        Binding="{Binding nr}"       Width="40" />
+                                    <DataGridTextColumn Header="Name"     Binding="{Binding Name}"     Width="2*" />
+                                    <DataGridTextColumn Header="Size (KB)" Binding="{Binding SizeKB}"  Width="90" />
+                                    <DataGridTextColumn Header="Modified" Binding="{Binding Modified}" Width="150" />
+                                    <DataGridTextColumn Header="Full path" Binding="{Binding FullName}" Width="3*" />
+                                </DataGrid.Columns>
+                            </DataGrid>
 
-                            <!-- Output console -->
-                            <TextBox x:Name="txt_cmdline_LocalPS" Grid.Row="5"
-                                     AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap"
-                                     VerticalContentAlignment="Top"
-                                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                                     FontFamily="Cascadia Mono, Consolas" FontSize="12"
-                                     Background="{StaticResource Console.Bg}" Foreground="{StaticResource Console.Fg}" />
+                            <TextBlock Grid.Row="5" Margin="0,8,0,0" Foreground="{StaticResource Danger}"
+                                       Text="Delete acts on exactly the files listed above. Preview first." />
                         </Grid>
                     </TabItem>
                 </TabControl>
@@ -1215,137 +1372,6 @@
                                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                                      FontFamily="Cascadia Mono, Consolas" FontSize="12"
                                      Background="{StaticResource Console.Bg}" Foreground="{StaticResource Console.Fg}" />
-                        </Grid>
-                    </TabItem>
-
-                    <!-- COM Ports -->
-                    <TabItem x:Name="tab_COM" ToolTip="Watch serial/COM devices connect and disconnect">
-                        <TabItem.Header>
-                            <TextBlock Text="COM Ports" />
-                        </TabItem.Header>
-                        <Grid Margin="12">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" MinHeight="120" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
-                            <!-- Controls -->
-                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                                <Button x:Name="btn_COM_Start"   Content="Start monitoring"
-                                        Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
-                                <Button x:Name="btn_COM_Stop"    Content="Stop" Width="70" Height="28" Margin="8,0,0,0" />
-                                <Button x:Name="btn_COM_Refresh" Content="List now" Width="90" Height="28" Margin="8,0,0,0" />
-                                <CheckBox x:Name="chk_COM_Beep" Content="Beep on change" VerticalAlignment="Center" Margin="16,0,0,0" />
-                                <TextBlock x:Name="lbl_COM_Status" Text="Idle." VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
-                            </StackPanel>
-
-                            <!-- Event/port grid -->
-                            <DataGrid x:Name="dgr_COM_Results" Grid.Row="1"
-                                      AutoGenerateColumns="False" IsReadOnly="True"
-                                      CanUserAddRows="False" GridLinesVisibility="Horizontal" HeadersVisibility="Column">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Time"         Binding="{Binding Time}"         Width="80" />
-                                    <DataGridTextColumn Header="Event"        Binding="{Binding Event}"        Width="80" />
-                                    <DataGridTextColumn Header="COM"          Binding="{Binding COM}"          Width="70" />
-                                    <DataGridTextColumn Header="Name"         Binding="{Binding Name}"         Width="2*" />
-                                    <DataGridTextColumn Header="Manufacturer" Binding="{Binding Manufacturer}" Width="*" />
-                                    <DataGridTextColumn Header="PNP device ID" Binding="{Binding PNPDeviceID}" Width="2*" />
-                                </DataGrid.Columns>
-                            </DataGrid>
-
-                            <TextBlock Grid.Row="2" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
-                                       Text="Polls every 2s while monitoring. PRESENT = already connected at start; ADDED/REMOVED = changes since." />
-                        </Grid>
-                    </TabItem>
-                </TabControl>
-            </TabItem>
-
-            <!-- ===================== Storage ===================== -->
-            <TabItem x:Name="tab_Storage" ToolTip="Storage management tools">
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#x1F9F9;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Storage" VerticalAlignment="Center" />
-                    </StackPanel>
-                </TabItem.Header>
-                <TabControl Margin="0" Padding="0" BorderThickness="0">
-                    <!-- Storage Cleanup -->
-                    <TabItem x:Name="tab_FileCleanup" ToolTip="Find and remove files in a folder">
-                        <TabItem.Header>
-                            <TextBlock Text="Storage Cleanup" />
-                        </TabItem.Header>
-                        <Grid Margin="12">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" MinHeight="120" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
-                            <!-- Folder row -->
-                            <Grid Grid.Row="0" Margin="0,0,0,6">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Label    Grid.Column="0" Content="Folder:" VerticalAlignment="Center" />
-                                <ComboBox x:Name="cmb_FC_Path" Grid.Column="1" Margin="6,0" IsEditable="True"
-                                          VerticalAlignment="Center" ToolTip="Pick a preset or type/paste a folder path" />
-                                <Button   x:Name="btn_FC_Browse" Grid.Column="2" Content="Browse..." Width="90" Height="26" />
-                            </Grid>
-
-                            <!-- Filter row -->
-                            <Grid Grid.Row="1" Margin="0,0,0,6">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="220" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Label   Grid.Column="0" Content="Name contains:" VerticalAlignment="Center" />
-                                <TextBox x:Name="txt_FC_Filter" Grid.Column="1" Margin="6,0" VerticalAlignment="Center"
-                                         ToolTip="Blank = every file. Plain text = name CONTAINS that text. Use * (any chars) or ? (one char) for explicit wildcards." />
-                                <CheckBox x:Name="chk_FC_Recurse" Grid.Column="2" Content="Include subfolders"
-                                          Margin="12,0,0,0" VerticalAlignment="Center" />
-                                <CheckBox x:Name="chk_FC_Recycle" Grid.Column="3" Content="Send to Recycle Bin (recommended)"
-                                          Margin="16,0,0,0" VerticalAlignment="Center" IsChecked="True"
-                                          ToolTip="Checked: files go to the Recycle Bin (recoverable). Unchecked: permanent delete, no undo.&#10;Note: Windows still permanently deletes files on network shares, removable/USB drives, or any file larger than the Recycle Bin's size limit - even when this is checked." />
-                            </Grid>
-
-                            <!-- Matching-rules hint (always visible) -->
-                            <TextBlock Grid.Row="2" Margin="0,0,0,6" Foreground="{StaticResource Text.Faint}" TextWrapping="Wrap"
-                                       Text="Preview lists files in the folder above whose name matches 'Name contains' (blank = all; plain text = contains; * / ? = wildcards), searching subfolders only when 'Include subfolders' is ticked." />
-
-                            <!-- Action row -->
-                            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
-                                <Button x:Name="btn_FC_Preview" Content="Preview"
-                                        Style="{StaticResource PrimaryButton}" Width="110" Height="28" />
-                                <Button x:Name="btn_FC_Delete"  Content="Delete listed"
-                                        Style="{StaticResource DangerButton}" Width="120" Height="28" Margin="8,0,0,0" />
-                                <TextBlock x:Name="lbl_FC_Count" Text="No preview yet."
-                                           VerticalAlignment="Center" Margin="14,0,0,0" Foreground="{StaticResource Text.Muted}" />
-                            </StackPanel>
-
-                            <!-- Results grid -->
-                            <DataGrid x:Name="dgr_FC_Results" Grid.Row="4"
-                                      AutoGenerateColumns="False" IsReadOnly="True"
-                                      CanUserAddRows="False" GridLinesVisibility="Horizontal"
-                                      HeadersVisibility="Column" SelectionMode="Extended">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="#"        Binding="{Binding nr}"       Width="40" />
-                                    <DataGridTextColumn Header="Name"     Binding="{Binding Name}"     Width="2*" />
-                                    <DataGridTextColumn Header="Size (KB)" Binding="{Binding SizeKB}"  Width="90" />
-                                    <DataGridTextColumn Header="Modified" Binding="{Binding Modified}" Width="150" />
-                                    <DataGridTextColumn Header="Full path" Binding="{Binding FullName}" Width="3*" />
-                                </DataGrid.Columns>
-                            </DataGrid>
-
-                            <TextBlock Grid.Row="5" Margin="0,8,0,0" Foreground="{StaticResource Danger}"
-                                       Text="Delete acts on exactly the files listed above. Preview first." />
                         </Grid>
                     </TabItem>
                 </TabControl>
@@ -1520,104 +1546,6 @@
                     </StackPanel>
                 </TabItem.Header>
                 <TabControl Margin="0" Padding="0" BorderThickness="0">
-                    <!-- Hardware Info -->
-                    <TabItem x:Name="tab_Hardware" ToolTip="Graphics card, CPU, memory and motherboard details">
-                        <TabItem.Header>
-                            <TextBlock Text="Hardware Info" />
-                        </TabItem.Header>
-                        <Grid Margin="12">
-                            <!-- A GridSplitter sits between the tables, so dragging a handle
-                                 grows one table and shrinks its neighbour rather than pushing
-                                 the footer off the tab. The GPU row stays Auto so it starts
-                                 exactly as tall as the adapters it holds - a splitter drag
-                                 replaces that with an explicit height anyway. The two lower
-                                 weights are only starting proportions; MinHeight stops a drag
-                                 from collapsing a grid to nothing. -->
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" MinHeight="60" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*"    MinHeight="70" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="1.3*" MinHeight="70" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
-                            <!-- Action buttons -->
-                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                                <Button x:Name="btn_HW_Refresh" Content="Scan Hardware"
-                                        Style="{StaticResource PrimaryButton}" Width="130" Height="28" />
-                                <Button x:Name="btn_HW_Copy" Content="Copy to Clipboard" Width="140" Height="28" Margin="8,0,0,0" />
-                                <Button x:Name="btn_HW_Save" Content="Save Report..." Width="120" Height="28" Margin="8,0,0,0" />
-                                <TextBlock x:Name="lbl_HW_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
-                            </StackPanel>
-
-                            <!-- Graphics adapters -->
-                            <GroupBox Grid.Row="1" Header="Graphics adapters"
-                                      ToolTip="VRAM comes from the display driver's own registry key, so cards larger than 4 GB report their true size (WMI's AdapterRAM is a UInt32 and caps at ~4095 MB). Integrated GPUs share system memory and may report their fallback allocation instead.">
-                                <DataGrid x:Name="dgr_HW_Gpu" Margin="4"
-                                          AutoGenerateColumns="False" IsReadOnly="True"
-                                          CanUserAddRows="False" GridLinesVisibility="Horizontal"
-                                          HeadersVisibility="Column">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Adapter"     Binding="{Binding Name}"       Width="2*" />
-                                        <DataGridTextColumn Header="VRAM"        Binding="{Binding VRAM}"       Width="90" />
-                                        <DataGridTextColumn Header="Vendor"      Binding="{Binding Vendor}"     Width="120" />
-                                        <DataGridTextColumn Header="Driver"      Binding="{Binding Driver}"     Width="110" />
-                                        <DataGridTextColumn Header="Driver date" Binding="{Binding DriverDate}" Width="90" />
-                                        <DataGridTextColumn Header="Mode"        Binding="{Binding Mode}"       Width="*" />
-                                        <DataGridTextColumn Header="Status"      Binding="{Binding Status}"     Width="60" />
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </GroupBox>
-
-                            <GridSplitter Grid.Row="2" Style="{StaticResource RowSplitter}" />
-
-                            <!-- CPU + memory, with matching items collapsed into one row -->
-                            <GroupBox Grid.Row="3" Header="CPU &amp; memory"
-                                      ToolTip="Identical processors and memory modules are shown as a single row. Click the caret to list them individually.">
-                                <DataGrid x:Name="dgr_HW_CpuMem" Margin="4"
-                                          AutoGenerateColumns="False" IsReadOnly="True"
-                                          CanUserAddRows="False" GridLinesVisibility="Horizontal"
-                                          HeadersVisibility="Column">
-                                    <DataGrid.Columns>
-                                        <DataGridTemplateColumn Header="" Width="26" CanUserSort="False">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <Button Style="{StaticResource CaretButton}"
-                                                            Content="{Binding Caret}"
-                                                            ToolTip="Show / hide the individual items" />
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="90" />
-                                        <DataGridTextColumn Header="Item"     Binding="{Binding Item}"     Width="2*" />
-                                        <DataGridTextColumn Header="Value"    Binding="{Binding Value}"    Width="3*" />
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </GroupBox>
-
-                            <GridSplitter Grid.Row="4" Style="{StaticResource RowSplitter}" />
-
-                            <!-- Board / BIOS / machine details -->
-                            <GroupBox Grid.Row="5" Header="System details">
-                                <DataGrid x:Name="dgr_HW_Details" Margin="4"
-                                          AutoGenerateColumns="False" IsReadOnly="True"
-                                          CanUserAddRows="False" GridLinesVisibility="Horizontal"
-                                          HeadersVisibility="Column">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="120" />
-                                        <DataGridTextColumn Header="Item"     Binding="{Binding Item}"     Width="170" />
-                                        <DataGridTextColumn Header="Value"    Binding="{Binding Value}"    Width="*" />
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </GroupBox>
-
-                            <TextBlock Grid.Row="6" Margin="0,6,0,0" Foreground="{StaticResource Text.Faint}"
-                                       Text="Read-only scan of this machine. Nothing here changes any setting. Drag the dividers to resize the tables." />
-                        </Grid>
-                    </TabItem>
-
                     <!-- QR Code Generator -->
                     <TabItem x:Name="tab_QRCode" ToolTip="Generate QR codes from text or URLs">
                         <TabItem.Header>
@@ -1676,7 +1604,97 @@
                                        Text="Enter any text or URL above and click 'Generate QR Code' to create a scannable QR code. You can then save it as an image or open it in your default image viewer. Scan with any smartphone camera or QR code reader app." />
                         </Grid>
                     </TabItem>
+
+                    <!-- Bootable USB (STUB - no functionality yet) -->
+                    <TabItem x:Name="tab_BootUSB" ToolTip="Create or update a Ventoy boot stick (not implemented yet)">
+                        <TabItem.Header>
+                            <TextBlock Text="Bootable USB" />
+                        </TabItem.Header>
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="120" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="Bootable USB (Ventoy)" FontSize="15" FontWeight="SemiBold"
+                                       Margin="0,0,0,6" />
+
+                            <TextBlock Grid.Row="1" TextWrapping="Wrap" Foreground="{StaticResource Text.Muted}"
+                                       Text="Placeholder tab - nothing here does anything yet. Planned: list removable drives, install or update Ventoy on the selected stick, and copy/manage the ISOs on it. Writing to a USB device is destructive, so every action here will require an explicit confirmation naming the target drive." />
+
+                            <Border Grid.Row="2" Margin="0,12,0,0" BorderThickness="1" CornerRadius="4"
+                                    BorderBrush="{StaticResource Text.Faint}">
+                                <TextBlock Text="Not implemented yet" Foreground="{StaticResource Text.Faint}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
+                    </TabItem>
                 </TabControl>
+            </TabItem>
+
+            <!-- ===================== Local PS ===================== -->
+            <TabItem x:Name="tab_LocalPS" ToolTip="Run PowerShell on this machine">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#x1F4DC;" FontFamily="Segoe UI Emoji" Margin="0,0,7,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Local PS" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
+                <Grid Margin="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="5" />
+                        <RowDefinition Height="*" MinHeight="120" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Search + description picker -->
+                    <Grid Grid.Row="0" Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="180" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Label   Grid.Column="0" Content="Search:" VerticalAlignment="Center" />
+                        <TextBox x:Name="cmb_LocalPS" Grid.Column="1" VerticalAlignment="Center"
+                                 ToolTip="Type to filter the preset list" />
+                        <Label   Grid.Column="2" Content="Preset:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                        <ComboBox x:Name="cmb_LocalPS_Desc" Grid.Column="3" Margin="6,0,0,0"
+                                  IsEditable="False" IsTextSearchEnabled="False" VerticalAlignment="Center" />
+                    </Grid>
+
+                    <!-- Command editor -->
+                    <Label   Grid.Row="1" Content="Command:" />
+                    <TextBox x:Name="cmb_LocalPS_Command" Grid.Row="2"
+                             Height="90" AcceptsReturn="True" TextWrapping="Wrap"
+                             VerticalContentAlignment="Top"
+                             VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas"
+                             ToolTip="Enter = run, Shift+Enter = newline" />
+
+                    <!-- Run row -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8">
+                        <Button x:Name="btn_Run_LocalPS" Content="Run command"
+                                Style="{StaticResource PrimaryButton}" Width="120" Height="28" />
+                        <Button x:Name="btn_Clear_LocalPS" Content="Clear output" Width="110" Height="28" Margin="8,0,0,0" />
+                        <TextBlock Text="Runs in this app's PowerShell session. Use $global: vars to keep values between commands."
+                                   VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Text.Faint}" />
+                    </StackPanel>
+
+                    <GridSplitter Grid.Row="4" Height="5" HorizontalAlignment="Stretch"
+                                  ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" />
+
+                    <!-- Output console -->
+                    <TextBox x:Name="txt_cmdline_LocalPS" Grid.Row="5"
+                             AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap"
+                             VerticalContentAlignment="Top"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                             FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                             Background="{StaticResource Console.Bg}" Foreground="{StaticResource Console.Fg}" />
+                </Grid>
             </TabItem>
 
         </TabControl>
