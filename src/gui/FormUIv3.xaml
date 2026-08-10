@@ -1552,11 +1552,14 @@
                             <TextBlock Text="QR / Barcode" />
                         </TabItem.Header>
                         <Grid Margin="12">
+                            <!-- The preview takes the flexible row. It used to be Auto
+                                 while the hint below it held the star row, which left a
+                                 dead gap under the hint and let a large code overflow
+                                 its own panel. -->
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" MinHeight="200" />
+                                <RowDefinition Height="*" MinHeight="150" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
@@ -1596,19 +1599,34 @@
                                 <TextBlock x:Name="lbl_QRCode_Status" Text="Ready" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource Text.Muted}" />
                             </StackPanel>
 
-                            <!-- QR Code display -->
-                            <Border Grid.Row="2" Background="{StaticResource Bg.Panel}"
-                                    BorderBrush="{StaticResource Border.Hair}" BorderThickness="1"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                                    Padding="20" Margin="0,0,0,12">
-                                <Image x:Name="img_QRCode" 
-                                       Width="300" Height="300"
-                                       Stretch="Uniform"
-                                       ToolTip="Generated QR code will appear here" />
-                            </Border>
+                            <!-- Code display at TRUE pixel size (Stretch="None"), so the
+                                 preview is exactly what Save writes and the Size picker
+                                 visibly does something.
+                                 The Image used to be pinned to Width/Height 300 with
+                                 Stretch="Uniform": 200 and 500 drew identically even though
+                                 the saved PNG differed, which makes the picker look broken.
+                                 Scale-to-fit (StretchDirection="DownOnly") was tried and is
+                                 worse - in a short window every size collapses to the panel
+                                 height and they all look the same again, which is the
+                                 original complaint. A code bigger than the panel therefore
+                                 scrolls: the scrollbar is an honest signal that the chosen
+                                 size exceeds what fits, and a resampled barcode would
+                                 misrepresent how scannable the saved file is. -->
+                            <ScrollViewer Grid.Row="2" Margin="0,0,0,12"
+                                          HorizontalScrollBarVisibility="Auto"
+                                          VerticalScrollBarVisibility="Auto">
+                                <Border Background="{StaticResource Bg.Panel}"
+                                        BorderBrush="{StaticResource Border.Hair}" BorderThickness="1"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Padding="10">
+                                    <Image x:Name="img_QRCode" Stretch="None"
+                                           ToolTip="The generated code appears here" />
+                                </Border>
+                            </ScrollViewer>
 
                             <TextBlock Grid.Row="3" Margin="0,8,0,0" Foreground="{StaticResource Text.Faint}"
-                                       Text="Pick a symbology, type, and the code redraws as you type - what you see always matches the box above. 1D formats are fussy about their input (an EAN-13 wants exactly 13 digits); the status line says what is wrong. Save it as a PNG or open it in your default image viewer. Generated entirely on this machine - nothing is uploaded and no internet connection is needed." />
+                                       TextWrapping="Wrap"
+                                       Text="Pick a symbology, type, and the code redraws as you type - what you see always matches the box above, at the pixel size Save will write. 1D formats are fussy about their input (an EAN-13 wants exactly 13 digits); the status line says what is wrong. Generated entirely on this machine - nothing is uploaded and no internet connection is needed." />
                         </Grid>
                     </TabItem>
 

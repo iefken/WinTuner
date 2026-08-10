@@ -1756,7 +1756,11 @@ Function Update-QRCodePreview {
         $global:QRCode_CurrentBitmap = $bitmap
         $global:QRCode_LastKey       = $key
         $global:QRCode_LastError     = ''
-        Set-QRCodeStatus "Up to date"
+
+        # State the real pixel size: a 1D strip is not Size x Size, and a large
+        # code may be scaled down to fit the panel, so what is on screen is not
+        # always what gets saved.
+        Set-QRCodeStatus "Up to date - $($bitmap.PixelWidth) x $($bitmap.PixelHeight) px"
     }
     catch {
         # Invalid payloads are normal while typing (half an EAN is not an EAN),

@@ -117,6 +117,14 @@ Bootstrap + shared infra + first features are in place and pass `Test-DevStartup
     through a temp file on every keystroke. **Nothing is written to disk while typing**; Save encodes
     straight to the chosen path and Open writes one temp file on demand.
   - 1D codes render as a strip (`Size` × `0.45`), not a square; 2D codes stay square.
+  - **The preview draws at true pixel size (`Stretch="None"` in a `ScrollViewer`), so the Size picker
+    visibly does something.** `img_QRCode` used to be pinned to `Width`/`Height` 300 with
+    `Stretch="Uniform"`: 200 and 500 looked identical on screen even though the saved PNG differed, which
+    reads as a broken picker. Scale-to-fit (`StretchDirection="DownOnly"`) was tried and is worse — in a
+    short window every size collapses to the panel height and they all match again. A code larger than the
+    panel now scrolls, and the status line always states the real size (`Up to date - 500 x 500 px`).
+    The display row is the star row; it was `Auto` while the hint below held the star row, which left a
+    dead gap under the hint and let a large code overflow its own panel.
   - **The human-readable caption under 1D codes is drawn by us, not by ZXing.** `PureBarcode = $false` is
     honoured only by ZXing's `System.Drawing` renderer — `WriteableBitmapRenderer` exposes `Font*`
     properties and ignores them, and adopting the GDI renderer would cost a `Bitmap` → PNG → `BitmapImage`
